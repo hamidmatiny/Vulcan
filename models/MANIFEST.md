@@ -27,6 +27,7 @@ Cross-backend benchmarks are only legitimate when all backends load these pins.
 | File | sha256 |
 |------|--------|
 | `config.json` | `0daed7749b4f02b8f76240d5444551d7b08712dab4d0adb8239c56ba823bb7b4` |
+| `export-meta.json` | `344d6645f0ab77988516636b1c4a08c3575e2f7448cac7504d46181c748ef99f` |
 | `generation_config.json` | `ed0b32ac72c0f5f44a719abb2d7786ea5146c871f83717b7f2018065954de02b` |
 | `merges.txt` | `1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5` |
 | `model.safetensors` | `248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707` |
