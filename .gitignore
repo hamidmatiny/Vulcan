@@ -44,6 +44,7 @@ vendor/
 *.tfstate
 *.tfstate.*
 *.tfvars
+!**/ci.tfvars
 crash.log
 
 # Helm
