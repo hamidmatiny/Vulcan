@@ -1,4 +1,4 @@
-# Vulcan CI — lint, unit tests, BentoML + Ray Serve + Triton conformance + short CPU k6 (ADR-002: no GPUs).
+# Vulcan CI — lint, unit tests, serving backends conformance + short CPU k6 (ADR-002: no GPUs).
 name: CI
 
 on:
@@ -18,6 +18,7 @@ env:
   VULCAN_BENTOML_PORT: "9000"
   VULCAN_RAY_SERVE_PORT: "9002"
   VULCAN_TRITON_PORT: "9003"
+  VULCAN_VLLM_PORT: "9004"
 
 jobs:
   changes:
@@ -27,6 +28,7 @@ jobs:
       bentoml_gate: ${{ steps.filter.outputs.bentoml_gate }}
       ray_serve_gate: ${{ steps.filter.outputs.ray_serve_gate }}
       triton_gate: ${{ steps.filter.outputs.triton_gate }}
+      vllm_gate: ${{ steps.filter.outputs.vllm_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +56,13 @@ jobs:
               - 'serving/triton/**'
               - 'contracts/**'
               - 'serving/common/tests/conformance/**'
+              - 'models/pins.json'
+              - 'models/MANIFEST.md'
+            vllm_gate:
+              - 'serving/vllm/**'
+              - 'contracts/**'
+              - 'serving/common/tests/conformance/**'
+              - 'serving/common/tests/conftest.py'
               - 'models/pins.json'
               - 'models/MANIFEST.md'
 
@@ -91,8 +100,11 @@ jobs:
           grep -q 'VULCAN_REFERENCE_PORT:-9001' docker-compose.yml
           grep -q 'VULCAN_RAY_SERVE_PORT:-9002' docker-compose.yml
           grep -q 'VULCAN_TRITON_PORT:-9003' docker-compose.yml
+          grep -q 'VULCAN_VLLM_PORT:-9004' docker-compose.yml
           grep -q '9002' .cursor/rules/vulcan-foundations.mdc
           grep -q '9003' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9004' .cursor/rules/vulcan-foundations.mdc
+          grep -qE 'phase-N:|fix\(<component>\)' .cursor/rules/vulcan-foundations.mdc
 
   unit-tests:
     name: Unit tests · contracts
@@ -376,6 +388,99 @@ jobs:
         with:
           name: triton-cpu-benchmark
           path: benchmark/results/triton-cpu.json
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  vllm:
+    name: vLLM · conformance + CPU k6
+    needs: changes
+    if: needs.changes.outputs.vllm_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Export pinned reference LLM (CPU)
+        run: |
+          python -m pip install -U pip
+          python -m venv models/.venv
+          models/.venv/bin/pip install -r models/scripts/requirements.txt
+          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          cd models/scripts && ../.venv/bin/python export_llm.py
+          cd models/scripts && ../.venv/bin/python verify_manifest.py
+      - name: Build + start vllm stack (compose :9004)
+        run: |
+          docker compose build vllm-engine vllm
+          docker compose up -d vllm
+      - name: Wait for /health
+        run: |
+          for i in $(seq 1 96); do
+            if curl -fsS "http://127.0.0.1:${VULCAN_VLLM_PORT}/health" | grep -q '"status":"ok"'; then
+              echo "vllm ready"
+              curl -fsS "http://127.0.0.1:${VULCAN_VLLM_PORT}/health"
+              exit 0
+            fi
+            echo "waiting ($i)..."
+            sleep 5
+          done
+          docker compose logs vllm-engine | tail -200
+          docker compose logs vllm | tail -100
+          exit 1
+      - name: Contract conformance suite (LLM-only modalities)
+        run: |
+          python -m venv serving/common/.venv
+          . serving/common/.venv/bin/activate
+          pip install -e "contracts/model-contract[dev]"
+          pip install -e "serving/common[dev]"
+          export VULCAN_BACKEND_URL="http://127.0.0.1:${VULCAN_VLLM_PORT}"
+          export VULCAN_CONFORMANCE_MODALITIES=llm
+          cd serving/common
+          pytest -q tests/conformance
+      - name: Vision returns unsupported_modality (contract error)
+        run: |
+          code=$(curl -sS -o /tmp/vllm-vision.json -w '%{http_code}' \
+            -X POST "http://127.0.0.1:${VULCAN_VLLM_PORT}/v1/infer" \
+            -H 'Content-Type: application/json' \
+            -d '{"request_id":"ci-vision","modality":"vision","model_id":"reference-tiny-vision","input":{"images":[{"media_type":"image/png","data_base64":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="}]}}')
+          test "$code" = "400"
+          python - <<'PY'
+          import json
+          body = json.loads(open("/tmp/vllm-vision.json").read())
+          assert body.get("error") == "unsupported_modality", body
+          assert "LLM-only" in body.get("message", "") or "vision" in body.get("message", "").lower(), body
+          print("OK vision unsupported", body)
+          PY
+      - name: Short CPU k6 (regression, not a perf claim)
+        run: |
+          docker run --rm --network host \
+            -v "$PWD:/work" -w /work \
+            -e BASE_URL="http://127.0.0.1:${VULCAN_VLLM_PORT}" \
+            -e MODEL_TYPE=llm \
+            -e MODEL_ID=reference-tiny-llm \
+            -e VUS=2 \
+            -e DURATION=10s \
+            -e BACKEND_NAME=vllm \
+            -e RESULTS_OUT=benchmark/results/vllm-cpu.json \
+            grafana/k6:0.54.0 run benchmark/k6/infer.js
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("benchmark/results/vllm-cpu.json")
+          data = json.loads(p.read_text())
+          assert data["schema_version"] == 1
+          assert data["backend"] == "vllm"
+          assert data["runtime_mode"] == "cpu"
+          assert data["metrics"]["requests_total"] > 0
+          print("OK", p, data["metrics"])
+          PY
+      - name: Upload vllm-cpu results
+        uses: actions/upload-artifact@v4
+        with:
+          name: vllm-cpu-benchmark
+          path: benchmark/results/vllm-cpu.json
       - name: Tear down
         if: always()
         run: docker compose down -v

@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "backend": "vllm",
+  "modality": "llm",
+  "model_id": "reference-tiny-llm",
+  "target_url": "http://127.0.0.1:9004",
+  "started_at": "2026-07-26T04:37:32.529Z",
+  "duration_seconds": 11.894,
+  "vus": 2,
+  "runtime_mode": "cpu",
+  "notes": "Short CPU k6 regression against serving/vllm (phase-5). LLM-only; not a GPU/PagedAttention claim \u2014 see serving/vllm/docs/gpu-mode.md.",
+  "metrics": {
+    "requests_total": 10,
+    "error_rate": 0,
+    "throughput_rps": 0.841,
+    "latency_ms": {
+      "p50": 2537.397,
+      "p95": 2805.695,
+      "p99": 2846.28,
+      "avg": 2481.698,
+      "max": 2856.426
+    }
+  }
+}

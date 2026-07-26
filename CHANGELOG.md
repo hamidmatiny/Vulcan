@@ -4,6 +4,13 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 5 — vLLM adapter
+
+- Host port **9004** for `serving/vllm` (LLM-only; vision → `unsupported_modality`)
+- CPU OpenAI-compatible small-model path + GPU `vllm serve` docs (PagedAttention / continuous batching / TP)
+- Compose `vllm` / `vllm-engine`; CI conformance (`VULCAN_CONFORMANCE_MODALITIES=llm`) + k6 → `benchmark/results/vllm-cpu.json`
+- Standing commit-message rule: `phase-N:` or `fix(<component>):` only
+
 ### Phase 4 — Triton adapter
 
 - Host port **9003** reserved for `serving/triton` (contract shim); Triton engine stays internal

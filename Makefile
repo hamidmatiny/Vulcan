@@ -1,8 +1,8 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	lint reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
-	benchmark-triton benchmark-compare models-export models-verify triton-prepare \
-	wait-for-health help
+	benchmark-triton benchmark-vllm benchmark-compare models-export models-verify \
+	triton-prepare wait-for-health help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -18,6 +18,7 @@ REF_PORT ?= 9001
 BENTOML_PORT ?= 9000
 RAY_SERVE_PORT ?= 9002
 TRITON_PORT ?= 9003
+VLLM_PORT ?= 9004
 # Poll loop mirrors CI health-wait (96 × 5s ≈ 8 min).
 HEALTH_WAIT_RETRIES ?= 96
 HEALTH_WAIT_SLEEP_SECS ?= 5
@@ -25,8 +26,8 @@ HEALTH_WAIT_SLEEP_SECS ?= 5
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?##"}; {printf "  %-22s %s\n", $$1, $$2}'
 
-up: triton-prepare ## Start local stack (bentoml :9000, ray-serve :9002, triton :9003; CPU-only)
-	$(COMPOSE) up -d --build --wait bentoml ray-serve triton
+up: triton-prepare ## Start local stack (:9000/:9002/:9003/:9004; CPU-only)
+	$(COMPOSE) up -d --build --wait bentoml ray-serve triton vllm
 
 down: ## Stop local stack
 	$(COMPOSE) down
@@ -135,6 +136,14 @@ benchmark-triton: ## Short CPU k6 against triton (:9003) → triton-cpu.json
 	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
 	VUS=2 DURATION=10s BACKEND_NAME=triton \
 	RESULTS_OUT=benchmark/results/triton-cpu.json \
+	bash benchmark/scripts/run_k6.sh
+
+benchmark-vllm: ## Short CPU k6 against vllm (:9004) → vllm-cpu.json
+	@$(MAKE) wait-for-health WAIT_PORT=$(VLLM_PORT)
+	BASE_URL=http://$(REF_HOST):$(VLLM_PORT) \
+	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
+	VUS=2 DURATION=10s BACKEND_NAME=vllm \
+	RESULTS_OUT=benchmark/results/vllm-cpu.json \
 	bash benchmark/scripts/run_k6.sh
 
 triton-prepare: ## Populate Triton model_repository with ONNX (needs models-export)

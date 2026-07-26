@@ -20,6 +20,24 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Optional modality filter for LLM-only backends (e.g. vLLM).
+
+    Set ``VULCAN_CONFORMANCE_MODALITIES=llm`` to skip vision *success* tests.
+    Does not alter test bodies — suite modules stay shared across backends.
+    """
+    raw = os.environ.get("VULCAN_CONFORMANCE_MODALITIES", "llm,vision")
+    allowed = {part.strip().lower() for part in raw.split(",") if part.strip()}
+    if "vision" in allowed:
+        return
+    skip_vision = pytest.mark.skip(
+        reason="VULCAN_CONFORMANCE_MODALITIES excludes vision (LLM-only backend)"
+    )
+    for item in items:
+        if item.name == "test_infer_vision_schema":
+            item.add_marker(skip_vision)
+
+
 @pytest.fixture(scope="session")
 def backend_url() -> Iterator[str]:
     """Point conformance at VULCAN_BACKEND_URL or a local reference server."""

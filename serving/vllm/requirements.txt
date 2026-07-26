@@ -1,0 +1,8 @@
+# Contract HTTP shim for vLLM / OpenAI-compatible engine (CPU-dev; ADR-002).
+fastapi>=0.110,<0.116
+uvicorn>=0.30
+httpx>=0.27
+numpy>=1.26,<2.0
+prometheus-client>=0.20
+jsonschema>=4.22
+PyYAML>=6.0

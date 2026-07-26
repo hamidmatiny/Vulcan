@@ -8,5 +8,5 @@ Contract-compliant model-serving backends. Each subdirectory implements [`contra
 | [`bentoml/`](./bentoml/) | Phase 2 — both reference models, contract-complete | **9000** |
 | [`ray-serve/`](./ray-serve/) | Phase 3 — both reference models, contract-complete | **9002** |
 | [`triton/`](./triton/) | Phase 4 — both reference models (ONNX + contract shim) | **9003** |
-| [`vllm/`](./vllm/) | Stub | TBD in 9000–9099 |
+| [`vllm/`](./vllm/) | Phase 5 — **LLM-only** (OpenAI-compatible engine + shim) | **9004** |
 | [`kserve/`](./kserve/) | Stub | TBD in 9000–9099 |

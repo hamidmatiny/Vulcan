@@ -1,0 +1,38 @@
+# Vulcan vLLM CPU engine — OpenAI-compatible small-model path (ADR-002).
+# Build from repo root (needs models/artifacts/llm/gpt2-small):
+#   docker build -f serving/vllm/Dockerfile.engine -t vulcan-vllm-engine:cpu .
+#
+# This is NOT the GPU vLLM binary. GPU continuous batching / PagedAttention:
+# see serving/vllm/docs/gpu-mode.md.
+
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    VULCAN_RUNTIME_MODE=cpu \
+    VULCAN_MODEL_DIR=/models/llm/gpt2-small \
+    PORT=8000 \
+    HOST=0.0.0.0
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      curl \
+      libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY serving/vllm/engine/requirements.txt /app/serving/vllm/engine/requirements.txt
+RUN pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu \
+ && pip install --no-cache-dir -r /app/serving/vllm/engine/requirements.txt
+
+COPY serving/vllm/engine /app/serving/vllm/engine
+COPY models/artifacts/llm/gpt2-small /models/llm/gpt2-small
+
+WORKDIR /app/serving/vllm/engine
+EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=180s --retries=24 \
+  CMD curl -fsS http://127.0.0.1:8000/v1/models || exit 1
+
+CMD ["python", "cpu_openai_server.py"]

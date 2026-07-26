@@ -26,15 +26,28 @@ Sibling bar to Argus. These rules apply to every phase — do not re-litigate th
 - Changes under `contracts/` or `gpu-infra/` without a corresponding ADR update fail CI (ADR presence gate).
 - Link new ADRs from `docs/adr/index.md` and the root README when user-facing.
 
-## Phase-commit convention
+## Commit messages (standing)
+
+Every commit MUST use exactly one of these forms — no ad hoc subjects:
 
 ```text
-phase-N: short description
+phase-N: <summary>
+fix(<component>): <summary>
 ```
 
-Examples: `phase-0: foundations, model contract, and CI skeleton`, `phase-2: add vLLM CPU-dev backend`.
+- **`phase-N:`** — phase deliverables (e.g. `phase-4: Triton adapter.`).
+- **`fix(<component>):`** — out-of-band fixes outside a phase bump (e.g. `fix(triton): wait for health before conformance`).
+
+Do **not** use messages like `start triton serving` or `make changes to the benchmark results`. This is a standing rule going forward; do not rewrite existing history to retrofit it.
 
 Prefer small PRs mapped to a single phase or component.
+
+## Git discipline
+
+- Commit only when asked (or when the phase Definition of Done explicitly requires commit/push).
+- Never update git config; never `--no-verify` / skip hooks unless explicitly requested.
+- Never force-push `main`/`master`; never destructive resets unless explicitly requested.
+- Do not amend commits you did not create in this session, or commits already pushed, unless the user explicitly asks and amend rules are met.
 
 ## Coverage gate
 
@@ -57,7 +70,8 @@ Prefer small PRs mapped to a single phase or component.
   - `9001` — `serving/common` reference server
   - `9002` — `serving/ray-serve`
   - `9003` — `serving/triton` (contract shim; Triton engine stays internal)
-  - `9004–9098` — future backends / gateway / obs
+  - `9004` — `serving/vllm` (contract shim; vLLM/OpenAI engine stays internal)
+  - `9005–9098` — future backends / gateway / obs
   - `9099` — optional contract-stub / docs static
 - Reference server, stubs, and compose `ports:` MUST use this range. Never default to `8080`/`8090`/etc.
 

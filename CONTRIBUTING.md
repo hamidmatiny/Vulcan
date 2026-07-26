@@ -2,17 +2,18 @@
 
 Thanks for helping build Vulcan. This repository is developed in **explicit phases** so each layer stays reviewable and production-shaped — same engineering bar as Argus.
 
-## Phase-based commits
+## Commit messages
 
-Commit messages must use the phase prefix:
+Every commit MUST use one of:
 
 ```text
-phase-N: short description
+phase-N: <summary>
+fix(<component>): <summary>
 ```
 
-Example: `phase-0: foundations, model contract, and CI skeleton`.
+Examples: `phase-0: foundations, model contract, and CI skeleton`, `fix(triton): wait for health before conformance`.
 
-If a change spans phases, prefer splitting PRs; if inseparable, use the **lowest** phase the change primarily advances.
+Ad hoc subjects are not allowed. If a change spans phases, prefer splitting PRs; if inseparable, use the **lowest** phase the change primarily advances.
 
 ## Before you open a PR
 

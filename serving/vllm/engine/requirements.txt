@@ -1,0 +1,8 @@
+# CPU OpenAI-compatible engine (small-model path for CI / local compose).
+# Real GPU vLLM is installed separately — see docs/gpu-mode.md (ADR-002).
+fastapi>=0.110,<0.116
+uvicorn>=0.30
+transformers>=4.40,<4.47
+safetensors>=0.4
+numpy>=1.26,<2.0
+# torch CPU wheel installed in Dockerfile.engine
