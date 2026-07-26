@@ -4,6 +4,19 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 10 — SageMaker Pipelines, Endpoints, and Model Registry
+
+- `pipelines/sagemaker/`: SageMaker SDK Pipeline (train → evaluate → register) for `reference-tiny-llm`
+- Model Registry + real-time Endpoint deploy/invoke helpers; contract-vocabulary README mapping
+- moto-backed pytest in CI (no live AWS); manual runbook with cost notes
+- Lint job ADR list includes ADR-005 (kept in sync with adr-gate)
+
+### Phase 9 — Karpenter GPU autoscaling and checkpoint-resume
+
+- `autoscaling/karpenter/`: NodePools/EC2NodeClass (spot + on-demand) wired to phase 7–8 labels
+- `autoscaling/checkpointing/`: SIGTERM checkpoint/resume for GPT-2 fine-tune path
+- [ADR-005](./docs/adr/005-spot-gpu-strategy.md); adr-gate for `autoscaling/**`
+
 ### Phase 8 — Kueue multi-tenant GPU scheduling
 
 - `gpu-infra/kueue/`: inference + training ClusterQueues/LocalQueues, MIG-aware quotas, WorkloadPriorityClasses

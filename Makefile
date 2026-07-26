@@ -1,9 +1,9 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
-	test-checkpointing lint reference-server benchmark-smoke benchmark-bentoml \
-	benchmark-ray-serve benchmark-triton benchmark-vllm benchmark-compare \
-	models-export models-verify triton-prepare wait-for-health validate-kserve \
-	validate-gpu-infra validate-autoscaling help
+	test-checkpointing test-sagemaker lint reference-server benchmark-smoke \
+	benchmark-bentoml benchmark-ray-serve benchmark-triton benchmark-vllm \
+	benchmark-compare models-export models-verify triton-prepare wait-for-health \
+	validate-kserve validate-gpu-infra validate-autoscaling help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -13,6 +13,8 @@ SERVING_COMMON_DIR := serving/common
 SERVING_COMMON_VENV := $(SERVING_COMMON_DIR)/.venv
 CHECKPOINTING_DIR := autoscaling/checkpointing
 CHECKPOINTING_VENV := $(CHECKPOINTING_DIR)/.venv
+SAGEMAKER_DIR := pipelines/sagemaker
+SAGEMAKER_VENV := $(SAGEMAKER_DIR)/.venv
 MODELS_VENV := models/.venv
 COVERAGE_MIN ?= 65
 # Vulcan host ports: 9000–9099
@@ -171,6 +173,16 @@ $(CHECKPOINTING_VENV)/bin/pytest: $(CHECKPOINTING_DIR)/pyproject.toml
 test-checkpointing: $(CHECKPOINTING_VENV)/bin/pytest ## Checkpoint-on-SIGTERM / resume (≥65%)
 	cd $(CHECKPOINTING_DIR) && .venv/bin/pytest -q \
 		--cov=vulcan_checkpointing --cov-report=term-missing \
+		--cov-fail-under=$(COVERAGE_MIN)
+
+$(SAGEMAKER_VENV)/bin/pytest: $(SAGEMAKER_DIR)/pyproject.toml
+	$(PYTHON) -m venv $(SAGEMAKER_VENV)
+	$(SAGEMAKER_VENV)/bin/pip install -U pip
+	$(SAGEMAKER_VENV)/bin/pip install -e "$(SAGEMAKER_DIR)[dev]"
+
+test-sagemaker: $(SAGEMAKER_VENV)/bin/pytest ## SageMaker pipeline/registry moto tests (≥65%)
+	cd $(SAGEMAKER_DIR) && SAGEMAKER_SUPPRESS_V2_WARNING=1 .venv/bin/pytest -q \
+		--cov=vulcan_sagemaker --cov-report=term-missing \
 		--cov-fail-under=$(COVERAGE_MIN)
 
 benchmark-compare: ## Markdown table from benchmark/results/*.json

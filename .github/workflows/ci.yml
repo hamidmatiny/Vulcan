@@ -32,6 +32,7 @@ jobs:
       kserve_gate: ${{ steps.filter.outputs.kserve_gate }}
       gpu_infra_gate: ${{ steps.filter.outputs.gpu_infra_gate }}
       autoscaling_gate: ${{ steps.filter.outputs.autoscaling_gate }}
+      sagemaker_gate: ${{ steps.filter.outputs.sagemaker_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -51,6 +52,9 @@ jobs:
             autoscaling_gate:
               - 'autoscaling/**'
               - 'docs/adr/005-spot-gpu-strategy.md'
+            sagemaker_gate:
+              - 'pipelines/sagemaker/**'
+              - 'docs/runbooks/sagemaker-manual-run.md'
             bentoml_gate:
               - 'serving/bentoml/**'
               - 'contracts/**'
@@ -106,6 +110,7 @@ jobs:
           test -f docs/adr/002-gpu-cost-safety-policy.md
           test -f docs/adr/003-mig-partitioning-strategy.md
           test -f docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md
+          test -f docs/adr/005-spot-gpu-strategy.md
           test -f models/MANIFEST.md
           test -f models/pins.json
       - name: Port convention (9000–9099)
@@ -607,6 +612,28 @@ jobs:
         run: make validate-autoscaling
       - name: Checkpoint-resume SIGTERM simulation
         run: make test-checkpointing
+
+  sagemaker:
+    name: SageMaker · moto pipeline/registry tests
+    needs: changes
+    if: needs.changes.outputs.sagemaker_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: SageMaker package tests (moto, no live AWS)
+        env:
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+          AWS_SECURITY_TOKEN: testing
+          AWS_SESSION_TOKEN: testing
+          AWS_DEFAULT_REGION: us-east-1
+          SAGEMAKER_SUPPRESS_V2_WARNING: "1"
+        run: make test-sagemaker
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra / autoscaling)
