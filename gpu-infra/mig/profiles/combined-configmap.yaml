@@ -1,0 +1,28 @@
+# Combined MIG ConfigMap (both profiles) — source of truth for helm template / conftest.
+# Node selection: label nvidia.com/mig.config=<profile-name>
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vulcan-mig-parted-configs
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: mig-parted
+data:
+  config.yaml: |
+    version: v1
+    mig-configs:
+      all-disabled:
+        - devices: all
+          mig-enabled: false
+      many-small-inference:
+        - devices: all
+          mig-enabled: true
+          mig-devices:
+            "1g.5gb": 7
+      training-large-batch:
+        - devices: all
+          mig-enabled: true
+          mig-devices:
+            "3g.40gb": 1
+            "4g.40gb": 1

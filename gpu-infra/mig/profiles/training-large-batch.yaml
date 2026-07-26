@@ -1,0 +1,32 @@
+# MIG profile: training / large-batch inference
+# Target shape: A100-80GB (or A100-40GB with fewer, larger slices).
+# Geometry: one 3g.40gb + one 4g.40gb (example mix) OR single 7g.80gb-class partition.
+# Here we use two larger slices for concurrent large-batch jobs with higher memory ceiling.
+#
+# Applied via GPU Operator migManager ConfigMap and node label:
+#   nvidia.com/mig.config=training-large-batch
+#
+# Trade-off: fewer tenants per GPU, much higher per-partition memory — better for vLLM
+# large context / training-style batches; worse packing density than many-small-inference.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vulcan-mig-parted-configs
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/mig-profile: training-large-batch
+data:
+  config.yaml: |
+    version: v1
+    mig-configs:
+      all-disabled:
+        - devices: all
+          mig-enabled: false
+      training-large-batch:
+        - devices: all
+          mig-enabled: true
+          mig-devices:
+            "3g.40gb": 1
+            "4g.40gb": 1

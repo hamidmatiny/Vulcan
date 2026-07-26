@@ -12,6 +12,7 @@
 |-----|----------|
 | [ADR-001](./docs/adr/001-unified-model-serving-contract.md) | Unified model serving contract (not per-backend APIs) |
 | [ADR-002](./docs/adr/002-gpu-cost-safety-policy.md) | GPU cost-safety policy — no real GPUs in CI |
+| [ADR-003](./docs/adr/003-mig-partitioning-strategy.md) | MIG partitioning strategy (many-small vs large-batch) |
 
 ---
 
@@ -83,4 +84,4 @@ docs/{adr,benchmarks}/  tests/e2e/
 - **≥ 65% coverage** on gated packages
 - **Cursor rules** in [`.cursor/rules/`](./.cursor/rules/) enforce contract-first + CPU-fallback automatically
 
-Phase 6 status: compose adapters (BentoML / Ray Serve / Triton / vLLM) + KServe Helm packaging (manifest validation in CI; kind runbook manual).
+Phase 7 status: serving adapters + KServe Helm + GPU Operator/MIG values + EKS GPU Terraform (validate/plan only in CI).

@@ -73,6 +73,7 @@ Prefer small PRs mapped to a single phase or component.
   - `9004` — `serving/vllm` (contract shim; vLLM/OpenAI engine stays internal)
   - `9005` — optional local `kubectl port-forward` for KServe (no compose service)
   - `9006–9098` — future backends / gateway / obs
+  - Phase 6–7 K8s/GPU infra: **no** docker-compose host port (validate-only in CI)
   - `9099` — optional contract-stub / docs static
 - Reference server, stubs, and compose `ports:` MUST use this range. Never default to `8080`/`8090`/etc.
 

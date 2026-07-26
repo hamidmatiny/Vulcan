@@ -1,0 +1,89 @@
+# NVIDIA GPU Operator Helm values for Vulcan on EKS GPU node groups.
+# Chart: https://helm.ngc.nvidia.com/nvidia → nvidia/gpu-operator
+# Pin: v24.9.0 (document bumps in README / CHANGELOG).
+#
+# Separation of concerns (explicit):
+#   1) driver + toolkit  — host GPU software stack (DaemonSets managed by Operator)
+#   2) devicePlugin      — Kubernetes device plugin DaemonSet (exposes nvidia.com/gpu / MIG)
+#   3) migManager        — applies MIG geometry from ConfigMaps / node labels
+#
+# CI: helm template + conftest only — never helm upgrade (ADR-002).
+
+operator:
+  defaultRuntime: containerd
+  runtimeClass: nvidia
+
+# ---------------------------------------------------------------------------
+# Driver / toolkit (host GPU stack) — distinct from the device plugin.
+# On EKS GPU AMIs (amazon-eks-gpu-*), drivers are often preinstalled → disable.
+# ---------------------------------------------------------------------------
+driver:
+  enabled: false
+  # When enabling operator-managed drivers (non-EKS AMI), pin intentionally:
+  # version: "550.90.07"
+
+toolkit:
+  enabled: true
+  env:
+    - name: CONTAINERD_CONFIG
+      value: /etc/containerd/config.toml
+    - name: CONTAINERD_SOCKET
+      value: /run/containerd/containerd.sock
+
+# ---------------------------------------------------------------------------
+# Device plugin DaemonSet — advertises GPUs / MIG devices to the kube-scheduler.
+# Config is separate from driver/toolkit so scheduling policy can change without
+# touching the host driver install path.
+# ---------------------------------------------------------------------------
+devicePlugin:
+  enabled: true
+  config:
+    name: vulcan-device-plugin-config
+    create: true
+    default: "default"
+    data:
+      default: |-
+        version: v1
+        flags:
+          migStrategy: mixed
+        sharing:
+          timeSlicing:
+            renameByDefault: false
+            failRequestsGreaterThanOne: true
+            resources: []
+
+# GPU Feature Discovery labels nodes for scheduling (instance family, MIG).
+gfd:
+  enabled: true
+
+dcgmExporter:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# MIG manager — profiles live under gpu-infra/mig/ and are merged via values-mig.yaml
+# ---------------------------------------------------------------------------
+mig:
+  strategy: mixed
+
+migManager:
+  enabled: true
+  config:
+    create: false
+    name: ""
+    default: "all-disabled"
+
+# Schedule Operator workloads onto GPU nodes only (matches Terraform taints/labels).
+daemonsets:
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+  nodeSelector:
+    vulcan.dev/gpu: "true"
+
+# Never request GPUs for the Operator's own pods beyond device plugin / GFD.
+validator:
+  plugin:
+    env:
+      - name: WITH_WORKLOAD
+        value: "false"

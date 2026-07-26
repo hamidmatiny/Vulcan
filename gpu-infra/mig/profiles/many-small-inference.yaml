@@ -1,0 +1,29 @@
+# MIG profile: many small inference replicas
+# Target shape: A100-40GB (or A10G when MIG-capable equivalent is unavailable — use A100 in EKS).
+# Geometry: seven 1g.5gb slices → maximize packing density for small Triton/KServe replicas.
+#
+# Applied via GPU Operator migManager ConfigMap (see values-mig.yaml) and node label:
+#   nvidia.com/mig.config=many-small-inference
+#
+# Trade-off: high isolation + density; each slice capped at ~5GiB HBM — unsuitable for large LLM KV.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vulcan-mig-parted-configs
+  namespace: gpu-operator
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/mig-profile: many-small-inference
+data:
+  config.yaml: |
+    version: v1
+    mig-configs:
+      all-disabled:
+        - devices: all
+          mig-enabled: false
+      many-small-inference:
+        - devices: all
+          mig-enabled: true
+          mig-devices:
+            "1g.5gb": 7

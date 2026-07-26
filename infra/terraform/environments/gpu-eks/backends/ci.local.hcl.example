@@ -1,0 +1,9 @@
+# Documented local backend config for CI-shaped validates.
+# Usage:
+#   cp backends/ci.local.hcl.example backends/ci.local.hcl
+#   terraform init -backend-config=backends/ci.local.hcl
+#
+# For remote state (manual apply only — never from GitHub Actions):
+#   path is unused; switch versions.tf backend to "s3" and pass bucket/key/region.
+
+path = "terraform.tfstate"

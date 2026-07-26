@@ -1,23 +1,45 @@
-# terraform
+# infra/terraform
 
-> Phase 0 stub — implementation lands in a later phase.
+Terraform for Vulcan cloud foundation pieces used by GPU scheduling. **CI runs `validate` + `plan` only — never `apply`** ([ADR-002](../../docs/adr/002-gpu-cost-safety-policy.md)).
 
-**Path:** `infra/terraform/`
+## Layout
 
-## Purpose
+```text
+environments/gpu-eks/     EKS GPU managed node groups (inference + MIG pools)
+modules/eks-gpu-nodegroup/ Reusable node group (labels, taints, instance types)
+```
 
-Cloud foundation (VPC, EKS, IAM). CI runs validate/plan only — never apply.
+## GPU node groups (phase 7)
 
-## Status
+| Module instance | Instance types | Default MIG label | Intent |
+|-----------------|----------------|-------------------|--------|
+| `gpu_inference` | `g5.xlarge`, `g5.2xlarge` | `all-disabled` | General GPU inference |
+| `gpu_mig_small` | `p4d.24xlarge` | `many-small-inference` | Triton/KServe multi-tenant |
+| `gpu_mig_large` | `p4d.24xlarge` | `training-large-batch` | Large KV / batch |
 
-Scaffolded in **phase-0**. No runtime yet.
+All groups:
 
-## How to run
+- Label `vulcan.dev/gpu=true` (GPU Operator DaemonSet nodeSelector)
+- Taint `nvidia.com/gpu=true:NoSchedule`
+- AMI type `AL2_x86_64_GPU` (preinstalled drivers → Operator `driver.enabled=false`)
 
-Not applicable until this component is implemented.
+## Backend config (documented)
 
-## Contract / policy notes
+Default backend in `environments/gpu-eks/versions.tf` is **local** state.
 
-- Serving backends must implement [`contracts/model-contract`](../../contracts/model-contract/) exactly ([ADR-001](../../docs/adr/001-unified-model-serving-contract.md)).
-- CI never provisions or runs against real GPU hardware ([ADR-002](../../docs/adr/002-gpu-cost-safety-policy.md)).
-- Coverage gate for gated packages: **≥ 65%** (see root `CONTRIBUTING.md` and CI).
+```bash
+cd infra/terraform/environments/gpu-eks
+terraform init -reconfigure
+terraform validate
+terraform plan -var-file=ci.tfvars -refresh=false
+```
+
+Default backend is **local** (`versions.tf`). Optional: `cp backends/ci.local.hcl.example backends/ci.local.hcl` and `terraform init -backend-config=backends/ci.local.hcl`.
+
+`ci.tfvars` uses mock subnet/role ARNs for offline plan (`-refresh=false`, mock AWS keys in provider). Real applies use private tfvars (gitignored) and real AWS credentials — **manual only**.
+
+## Validate
+
+```bash
+make validate-gpu-infra
+```

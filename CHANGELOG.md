@@ -4,6 +4,13 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 7 — GPU Operator, device plugin, and MIG
+
+- `gpu-infra/gpu-operator/`: EKS Helm values with explicit driver/toolkit vs device-plugin separation
+- `gpu-infra/mig/`: `many-small-inference` + `training-large-batch` profiles; [ADR-003](./docs/adr/003-mig-partitioning-strategy.md)
+- `infra/terraform/environments/gpu-eks/`: GPU node groups (labels/taints/instance types); validate/plan only
+- CI: path-filtered terraform + helm template + conftest (no apply — ADR-002)
+
 ### Phase 6 — KServe adapter
 
 - `serving/kserve/helm/`: InferenceServices wrapping Triton + vLLM contract images (CPU-dev); canary `trafficPercent` example

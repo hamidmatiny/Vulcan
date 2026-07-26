@@ -1,0 +1,25 @@
+# Device-plugin–only overlay (merge after values-eks.yaml).
+# Keeps DaemonSet scheduling policy next to the plugin; driver/toolkit stay in values-eks.yaml.
+
+devicePlugin:
+  enabled: true
+  # Affinity: run on Vulcan GPU node groups only (labels from infra/terraform).
+  # (Operator chart maps these via daemonsets.* in values-eks.yaml; this file documents
+  #  the plugin ConfigMap content and MIG strategy flags.)
+  config:
+    name: vulcan-device-plugin-config
+    create: true
+    default: "mig-mixed"
+    data:
+      default: |-
+        version: v1
+        flags:
+          migStrategy: none
+      mig-mixed: |-
+        version: v1
+        flags:
+          migStrategy: mixed
+      mig-single: |-
+        version: v1
+        flags:
+          migStrategy: single

@@ -1,0 +1,10 @@
+.terraform/
+terraform.tfstate
+terraform.tfstate.*
+tfplan
+*.tfplan
+backends/ci.local.hcl
+*.auto.tfvars
+secret.tfvars
+# Keep .terraform.lock.hcl committed for reproducible CI plans.
+

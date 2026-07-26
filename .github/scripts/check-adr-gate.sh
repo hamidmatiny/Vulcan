@@ -8,7 +8,8 @@ cd "$ROOT"
 
 ADR_DIR="docs/adr"
 ADR_CONTRACTS="001-unified-model-serving-contract.md"
-ADR_GPU_INFRA="002-gpu-cost-safety-policy.md"
+ADR_GPU_COST="002-gpu-cost-safety-policy.md"
+ADR_MIG="003-mig-partitioning-strategy.md"
 
 CHANGED_FILES=""
 if [[ -n "${ADR_GATE_CHANGED_FILES:-}" ]]; then
@@ -57,7 +58,8 @@ if [[ "$touched_contracts" -eq 1 ]]; then
 fi
 
 if [[ "$touched_gpu_infra" -eq 1 ]]; then
-  check_adr "gpu-infra/" "$ADR_GPU_INFRA"
+  check_adr "gpu-infra/" "$ADR_GPU_COST"
+  check_adr "gpu-infra/" "$ADR_MIG"
 fi
 
 if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 ]]; then

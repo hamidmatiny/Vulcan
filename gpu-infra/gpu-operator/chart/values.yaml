@@ -1,0 +1,39 @@
+namespace: gpu-operator
+createNamespace: true
+
+devicePluginConfig:
+  name: vulcan-device-plugin-config
+  default: mig-mixed
+  entries:
+    default: |
+      version: v1
+      flags:
+        migStrategy: none
+    mig-mixed: |
+      version: v1
+      flags:
+        migStrategy: mixed
+    mig-single: |
+      version: v1
+      flags:
+        migStrategy: single
+
+migPartedConfig:
+  name: vulcan-mig-parted-configs
+  data: |
+    version: v1
+    mig-configs:
+      all-disabled:
+        - devices: all
+          mig-enabled: false
+      many-small-inference:
+        - devices: all
+          mig-enabled: true
+          mig-devices:
+            "1g.5gb": 7
+      training-large-batch:
+        - devices: all
+          mig-enabled: true
+          mig-devices:
+            "3g.40gb": 1
+            "4g.40gb": 1

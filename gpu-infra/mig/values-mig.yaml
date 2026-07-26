@@ -1,0 +1,32 @@
+# Merge with gpu-infra/gpu-operator/values-eks.yaml when installing GPU Operator.
+# Embeds both MIG profiles into migManager.config (single ConfigMap, multiple named geometries).
+
+mig:
+  strategy: mixed
+
+migManager:
+  enabled: true
+  config:
+    create: true
+    name: vulcan-mig-parted-configs
+    default: "all-disabled"
+    data:
+      config.yaml: |-
+        version: v1
+        mig-configs:
+          all-disabled:
+            - devices: all
+              mig-enabled: false
+          # Profile A — many small inference replicas (see profiles/many-small-inference.yaml)
+          many-small-inference:
+            - devices: all
+              mig-enabled: true
+              mig-devices:
+                "1g.5gb": 7
+          # Profile B — training / large-batch (see profiles/training-large-batch.yaml)
+          training-large-batch:
+            - devices: all
+              mig-enabled: true
+              mig-devices:
+                "3g.40gb": 1
+                "4g.40gb": 1

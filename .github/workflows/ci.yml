@@ -30,6 +30,7 @@ jobs:
       triton_gate: ${{ steps.filter.outputs.triton_gate }}
       vllm_gate: ${{ steps.filter.outputs.vllm_gate }}
       kserve_gate: ${{ steps.filter.outputs.kserve_gate }}
+      gpu_infra_gate: ${{ steps.filter.outputs.gpu_infra_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +42,10 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'Makefile'
               - 'docker-compose.yml'
+            gpu_infra_gate:
+              - 'gpu-infra/**'
+              - 'infra/terraform/**'
+              - 'docs/adr/003-mig-partitioning-strategy.md'
             bentoml_gate:
               - 'serving/bentoml/**'
               - 'contracts/**'
@@ -94,6 +99,7 @@ jobs:
         run: |
           test -f docs/adr/001-unified-model-serving-contract.md
           test -f docs/adr/002-gpu-cost-safety-policy.md
+          test -f docs/adr/003-mig-partitioning-strategy.md
           test -f models/MANIFEST.md
           test -f models/pins.json
       - name: Port convention (9000–9099)
@@ -522,6 +528,42 @@ jobs:
           conftest --version
       - name: Validate KServe chart (no cluster apply)
         run: make validate-kserve
+
+  gpu-infra:
+    name: GPU infra · terraform + helm template + conftest
+    needs: changes
+    if: needs.changes.outputs.gpu_infra_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+          terraform_wrapper: false
+      - name: Install kubeconform
+        env:
+          KUBECONFORM_VERSION: "0.6.7"
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install /tmp/kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+      - name: Install conftest
+        env:
+          CONFTEST_VERSION: "0.55.0"
+        run: |
+          curl -fsSL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install /tmp/conftest /usr/local/bin/conftest
+          conftest --version
+      - name: Validate GPU Operator / MIG / Terraform (no apply)
+        run: make validate-gpu-infra
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra)

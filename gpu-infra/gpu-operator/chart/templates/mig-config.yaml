@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.migPartedConfig.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: mig-parted
+    vulcan.dev/layer: mig
+data:
+  config.yaml: |
+{{ .Values.migPartedConfig.data | indent 4 }}

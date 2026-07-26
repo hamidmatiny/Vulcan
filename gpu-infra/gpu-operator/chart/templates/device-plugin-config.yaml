@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.devicePluginConfig.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: device-plugin
+    vulcan.dev/layer: device-plugin
+data:
+  {{- range $name, $body := .Values.devicePluginConfig.entries }}
+  {{ $name }}: |
+{{ $body | indent 4 }}
+  {{- end }}
