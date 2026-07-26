@@ -41,16 +41,16 @@ Full design: [ARCHITECTURE.md](./ARCHITECTURE.md)
 git clone https://github.com/hamidmatiny/Vulcan.git && cd Vulcan
 cp .env.example .env
 make models-export      # once — pin-identical GPT-2 + ResNet-18 weights
-make up                 # BentoML :9000 + Ray Serve :9002 (ports 9000–9099)
+make up                 # BentoML :9000 + Ray Serve :9002 + Triton :9003
 make test
-curl -s localhost:9000/health && curl -s localhost:9002/health
-VULCAN_BACKEND_URL=http://127.0.0.1:9002 make test-serving-common
-make benchmark-ray-serve  # → benchmark/results/ray-serve-cpu.json
+curl -s localhost:9000/health && curl -s localhost:9002/health && curl -s localhost:9003/health
+VULCAN_BACKEND_URL=http://127.0.0.1:9003 make test-serving-common
+make benchmark-triton     # → benchmark/results/triton-cpu.json
 make down
 ```
 
 **Ports:** Vulcan owns **9000–9099** on the host (avoids Argus and other stacks).  
-Pinned models: [`models/MANIFEST.md`](./models/MANIFEST.md) · [BentoML](./serving/bentoml/) · [Ray Serve](./serving/ray-serve/) · Conformance: [`serving/common/`](./serving/common/)
+Pinned models: [`models/MANIFEST.md`](./models/MANIFEST.md) · [BentoML](./serving/bentoml/) · [Ray Serve](./serving/ray-serve/) · [Triton](./serving/triton/) · Conformance: [`serving/common/`](./serving/common/)
 
 > **GPU policy:** CI and `make up` never provision real GPUs. Manual GPU benchmarks live in [`docs/benchmarks/`](./docs/benchmarks/) ([ADR-002](./docs/adr/002-gpu-cost-safety-policy.md)).
 
@@ -83,4 +83,4 @@ docs/{adr,benchmarks}/  tests/e2e/
 - **≥ 65% coverage** on gated packages
 - **Cursor rules** in [`.cursor/rules/`](./.cursor/rules/) enforce contract-first + CPU-fallback automatically
 
-Phase 3 status: BentoML (`:9000`) + Ray Serve (`:9002`) CPU adapters for both reference models.
+Phase 4 status: BentoML (`:9000`) + Ray Serve (`:9002`) + Triton (`:9003`) CPU adapters for both reference models.

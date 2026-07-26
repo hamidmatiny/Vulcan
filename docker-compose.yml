@@ -4,8 +4,9 @@
 #   9000 — serving/bentoml
 #   9001 — serving/common reference server (optional profile: reference)
 #   9002 — serving/ray-serve
+#   9003 — serving/triton (contract shim; engine is internal-only)
 #   9099 — contract OpenAPI stub (optional profile: stub)
-#   9003–9098 — reserved for later backends / gateway / observability
+#   9004–9098 — reserved for later backends / gateway / observability
 
 name: vulcan
 
@@ -47,6 +48,53 @@ services:
       timeout: 5s
       retries: 24
       start_period: 240s
+    restart: unless-stopped
+
+  # Triton Inference Server (ONNX Runtime, KIND_CPU). No host ports — shim only.
+  # Requires `make triton-prepare` so model_repository/*/1/model.onnx exist before build.
+  triton-engine:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: serving/triton/Dockerfile.engine
+    image: vulcan-triton-engine:cpu
+    environment:
+      CUDA_VISIBLE_DEVICES: ""
+    expose:
+      - "8000"
+      - "8001"
+      - "8002"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/v2/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 36
+      start_period: 240s
+    restart: unless-stopped
+
+  triton:
+    build:
+      context: .
+      dockerfile: serving/triton/Dockerfile
+    image: vulcan-triton:cpu
+    ports:
+      - "${VULCAN_TRITON_PORT:-9003}:9003"
+    environment:
+      VULCAN_RUNTIME_MODE: cpu
+      VULCAN_MODELS_DIR: /models
+      TRITON_URL: triton-engine:8000
+      TRITON_WAIT_SECONDS: "360"
+      PORT: "9003"
+      HOST: "0.0.0.0"
+    depends_on:
+      triton-engine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 24
+      start_period: 120s
     restart: unless-stopped
 
   # Phase-1 trivial reference server (no real weights) — optional.

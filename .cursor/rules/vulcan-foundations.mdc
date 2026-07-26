@@ -56,7 +56,8 @@ Prefer small PRs mapped to a single phase or component.
   - `9000` — `serving/bentoml`
   - `9001` — `serving/common` reference server
   - `9002` — `serving/ray-serve`
-  - `9003–9098` — future backends / gateway / obs
+  - `9003` — `serving/triton` (contract shim; Triton engine stays internal)
+  - `9004–9098` — future backends / gateway / obs
   - `9099` — optional contract-stub / docs static
 - Reference server, stubs, and compose `ports:` MUST use this range. Never default to `8080`/`8090`/etc.
 

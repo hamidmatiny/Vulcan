@@ -4,6 +4,12 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 4 — Triton adapter
+
+- Host port **9003** reserved for `serving/triton` (contract shim); Triton engine stays internal
+- Triton model repository + ONNX for both phase-1 reference models; CPU `config.pbtxt` + GPU/TensorRT docs
+- Compose `triton` / `triton-engine`; CI conformance + short CPU k6 → `benchmark/results/triton-cpu.json`
+
 ### Phase 3 — Ray Serve adapter
 
 - `serving/ray-serve/` on host port **9002**: contract-compliant Ray Serve deployments for both phase-1 reference models

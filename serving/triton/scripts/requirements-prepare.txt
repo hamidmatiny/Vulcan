@@ -1,0 +1,5 @@
+# Host-side ONNX prep for Triton model_repository (CPU).
+transformers>=4.40,<4.47
+safetensors>=0.4
+numpy>=1.26,<2.0
+# torch installed separately (CPU wheel) via models-export / CI.

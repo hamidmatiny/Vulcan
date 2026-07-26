@@ -1,7 +1,7 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	lint reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
-	benchmark-compare models-export models-verify help
+	benchmark-triton benchmark-compare models-export models-verify triton-prepare help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -16,12 +16,13 @@ REF_HOST ?= 127.0.0.1
 REF_PORT ?= 9001
 BENTOML_PORT ?= 9000
 RAY_SERVE_PORT ?= 9002
+TRITON_PORT ?= 9003
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?##"}; {printf "  %-22s %s\n", $$1, $$2}'
 
-up: ## Start local stack (bentoml :9000, ray-serve :9002; CPU-only)
-	$(COMPOSE) up -d --build bentoml ray-serve
+up: triton-prepare ## Start local stack (bentoml :9000, ray-serve :9002, triton :9003; CPU-only)
+	$(COMPOSE) up -d --build bentoml ray-serve triton
 
 down: ## Stop local stack
 	$(COMPOSE) down
@@ -96,6 +97,18 @@ benchmark-ray-serve: ## Short CPU k6 against ray-serve (:9002) → ray-serve-cpu
 	VUS=2 DURATION=10s BACKEND_NAME=ray-serve \
 	RESULTS_OUT=benchmark/results/ray-serve-cpu.json \
 	bash benchmark/scripts/run_k6.sh
+
+benchmark-triton: ## Short CPU k6 against triton (:9003) → triton-cpu.json
+	BASE_URL=http://$(REF_HOST):$(TRITON_PORT) \
+	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
+	VUS=2 DURATION=10s BACKEND_NAME=triton \
+	RESULTS_OUT=benchmark/results/triton-cpu.json \
+	bash benchmark/scripts/run_k6.sh
+
+triton-prepare: ## Populate Triton model_repository with ONNX (needs models-export)
+	@test -d $(MODELS_VENV) || $(MAKE) models-export
+	$(MODELS_VENV)/bin/pip install -q -r serving/triton/scripts/requirements-prepare.txt
+	$(MODELS_VENV)/bin/python serving/triton/scripts/prepare_model_repo.py
 
 benchmark-compare: ## Markdown table from benchmark/results/*.json
 	$(PYTHON) benchmark/scripts/compare_results.py --skip-schema 2>/dev/null || \

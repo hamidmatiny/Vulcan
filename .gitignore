@@ -67,4 +67,7 @@ models/.venv/
 models/artifacts/**/.cache/
 serving/bentoml/.venv/
 serving/ray-serve/.venv/
+serving/triton/.venv/
+serving/triton/model_repository/**/1/*.onnx
+serving/triton/model_repository/**/1/export-meta.json
 !models/**/.gitkeep

@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "backend": "triton",
+  "modality": "llm",
+  "model_id": "reference-tiny-llm",
+  "target_url": "http://127.0.0.1:9003",
+  "started_at": "2026-07-26T04:14:56.224Z",
+  "duration_seconds": 20.944,
+  "vus": 2,
+  "runtime_mode": "cpu",
+  "notes": "Short CPU k6 regression against serving/triton (phase-4). Not a perf claim; GPU/perf_analyzer runs are manual — see serving/triton/README.md and docs/benchmarks/.",
+  "metrics": {
+    "requests_total": 3,
+    "error_rate": 0,
+    "throughput_rps": 0.143,
+    "latency_ms": {
+      "p50": 15700.696,
+      "p95": 20388.336,
+      "p99": 20805.016,
+      "avg": 15700.696,
+      "max": 20909.185
+    }
+  }
+}
