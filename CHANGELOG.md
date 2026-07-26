@@ -4,6 +4,12 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 1 — Reference models and benchmark harness
+
+- `models/`: fetch/export scripts for GPT-2 small (safetensors) + ResNet-18 (ONNX); [`MANIFEST.md`](./models/MANIFEST.md) pins revisions and sha256 digests
+- `serving/common/`: `VulcanClient` SDK, contract-conformance pytest suite, trivial CPU reference server
+- `benchmark/`: k6 load harness (parameterized URL/modality/VUs/duration), `results/schema.json`, `compare_results.py` markdown table
+
 ### Phase 0 — Foundations
 
 - Monorepo scaffold matching the target layout (`contracts/`, `serving/*`, `gpu-infra/*`, `infra/*`, …)

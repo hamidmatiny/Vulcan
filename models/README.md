@@ -1,23 +1,35 @@
 # models
 
-> Phase 0 stub — implementation lands in a later phase.
+Pinned CPU-runnable reference models for Vulcan. Every later serving backend must load **byte-identical** weights so cross-backend benchmarks are legitimate.
 
-**Path:** `models/`
+## Pins
 
-## Purpose
+| Contract `model_id` | Source | Export | Details |
+|---------------------|--------|--------|---------|
+| `reference-tiny-llm` | Hugging Face `openai-community/gpt2` @ pinned revision (~124M) | `safetensors` | Causal LM for `/v1/infer` `modality=llm` |
+| `reference-tiny-vision` | torchvision ResNet-18 ImageNet | `onnx` (opset 17) | Vision classifier for `modality=vision` |
 
-Reference and packaging artifacts for models used in local CPU-dev and (manual) GPU benchmark runs.
+Canonical digests: **[`MANIFEST.md`](./MANIFEST.md)** · machine-readable: [`pins.json`](./pins.json)
 
-## Status
+## Fetch / export
 
-Scaffolded in **phase-0**. No runtime yet.
+```bash
+make models-export    # downloads + exports under models/artifacts/
+make models-verify    # checks sha256 against MANIFEST.md
+```
 
-## How to run
+Weight binaries (`*.safetensors`, `*.onnx`, …) are gitignored. Config/tokenizer sidecars and `sha256sums.txt` may be committed. CI never requires GPU (ADR-002).
 
-Not applicable until this component is implemented.
+## Layout
 
-## Contract / policy notes
-
-- Serving backends must implement [`contracts/model-contract`](../contracts/model-contract/) exactly ([ADR-001](../docs/adr/001-unified-model-serving-contract.md)).
-- CI never provisions or runs against real GPU hardware ([ADR-002](../docs/adr/002-gpu-cost-safety-policy.md)).
-- Coverage gate for gated packages: **≥ 65%** (see root `CONTRIBUTING.md` and CI).
+```text
+models/
+  MANIFEST.md
+  pins.json
+  scripts/export_llm.py
+  scripts/export_vision.py
+  scripts/write_manifest.py
+  scripts/verify_manifest.py
+  artifacts/llm/gpt2-small/
+  artifacts/vision/resnet18/
+```

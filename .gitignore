@@ -56,11 +56,13 @@ tmp/
 .cache/
 .direnv/
 
-# Model weights (keep manifests; ignore large binaries)
+# Model weights (keep manifests / sidecars; ignore large binaries)
 models/**/*.bin
 models/**/*.pt
 models/**/*.pth
 models/**/*.onnx
 models/**/*.safetensors
 models/**/*.gguf
+models/.venv/
+models/artifacts/**/.cache/
 !models/**/.gitkeep

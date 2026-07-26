@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "policy": "All serving backends MUST load weights whose sha256 matches models/MANIFEST.md. Cross-backend benchmarks are only valid against these pins.",
+  "models": {
+    "reference-tiny-llm": {
+      "modality": "llm",
+      "source": {
+        "hub": "huggingface",
+        "repo_id": "openai-community/gpt2",
+        "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+        "approx_params": "124M",
+        "license": "MIT"
+      },
+      "export": {
+        "format": "safetensors",
+        "relative_dir": "artifacts/llm/gpt2-small",
+        "primary_file": "model.safetensors"
+      },
+      "notes": "GPT-2 small (causal LM). Prefer safetensors for HF/vLLM/Bento paths; ONNX export is optional and not required for the LLM pin."
+    },
+    "reference-tiny-vision": {
+      "modality": "vision",
+      "source": {
+        "hub": "torchvision",
+        "name": "resnet18",
+        "weights": "ResNet18_Weights.IMAGENET1K_V1",
+        "weights_url": "https://download.pytorch.org/models/resnet18-f37072fd.pth",
+        "license": "BSD-3-Clause (torchvision)"
+      },
+      "export": {
+        "format": "onnx",
+        "opset": 17,
+        "relative_dir": "artifacts/vision/resnet18",
+        "primary_file": "model.onnx",
+        "input_shape": [1, 3, 224, 224]
+      },
+      "notes": "ImageNet-pretrained ResNet-18 exported to ONNX for Triton/ONNX Runtime and other backends."
+    }
+  }
+}

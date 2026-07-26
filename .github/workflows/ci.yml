@@ -15,7 +15,6 @@ concurrency:
 env:
   PYTHON_VERSION: "3.12"
   COVERAGE_MIN: "65"
-  # Explicit: no GPU runners, no cloud GPU provisioning in this workflow.
   VULCAN_RUNTIME_MODE: cpu
 
 jobs:
@@ -27,21 +26,32 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install contract package (dev)
+      - name: Install packages
         run: |
           python -m pip install -U pip
           python -m venv contracts/model-contract/.venv
           contracts/model-contract/.venv/bin/pip install -e "contracts/model-contract[dev]"
+          python -m venv serving/common/.venv
+          serving/common/.venv/bin/pip install -e "contracts/model-contract[dev]"
+          serving/common/.venv/bin/pip install -e "serving/common[dev]"
       - name: Ruff
-        run: contracts/model-contract/.venv/bin/ruff check contracts/model-contract/src contracts/model-contract/tests
+        run: |
+          contracts/model-contract/.venv/bin/ruff check contracts/model-contract/src contracts/model-contract/tests
+          serving/common/.venv/bin/ruff check serving/common/src serving/common/tests
       - name: Required ADRs present
         run: |
           test -f docs/adr/001-unified-model-serving-contract.md
           test -f docs/adr/002-gpu-cost-safety-policy.md
           test -f docs/adr/index.md
+      - name: Model pins / MANIFEST present
+        run: |
+          test -f models/MANIFEST.md
+          test -f models/pins.json
+          grep -q '248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707' models/MANIFEST.md
+          grep -q '7b7aa3632a82316840b62325e940c392f1db84b80d0eef30a3c06e0dc303c10f' models/MANIFEST.md
 
   unit-tests:
-    name: Unit tests
+    name: Unit tests · contracts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,6 +69,31 @@ jobs:
             --cov=vulcan_model_contract \
             --cov-report=term-missing \
             --cov-fail-under=${{ env.COVERAGE_MIN }}
+
+  serving-common:
+    name: Unit tests · serving/common + conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install + test (coverage ≥65%)
+        run: |
+          python -m pip install -U pip
+          python -m venv serving/common/.venv
+          . serving/common/.venv/bin/activate
+          pip install -e "contracts/model-contract[dev]"
+          pip install -e "serving/common[dev]"
+          cd serving/common
+          pytest -q \
+            --cov=vulcan_serving_common \
+            --cov-report=term-missing \
+            --cov-fail-under=${{ env.COVERAGE_MIN }}
+      - name: Benchmark compare-script tests
+        run: |
+          . serving/common/.venv/bin/activate
+          PYTHONPATH=benchmark/scripts pytest -q benchmark/tests
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra)

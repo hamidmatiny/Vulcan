@@ -40,11 +40,15 @@ Full design: [ARCHITECTURE.md](./ARCHITECTURE.md)
 ```bash
 git clone https://github.com/hamidmatiny/Vulcan.git && cd Vulcan
 cp .env.example .env
-make up          # CPU-only compose placeholders
-make test        # unit tests (contracts package)
+make up                 # CPU-only compose placeholders
+make test               # contracts + serving/common conformance + benchmark unit tests
 make lint
+make reference-server   # trivial contract server (separate terminal)
+make benchmark-smoke    # k6 → benchmark/results/reference-llm.json
 make down
 ```
+
+Pinned reference models: [`models/MANIFEST.md`](./models/MANIFEST.md) · Conformance: [`serving/common/`](./serving/common/) · Load harness: [`benchmark/`](./benchmark/)
 
 > **GPU policy:** CI and `make up` never provision real GPUs. Manual GPU benchmarks live in [`docs/benchmarks/`](./docs/benchmarks/) ([ADR-002](./docs/adr/002-gpu-cost-safety-policy.md)).
 
@@ -77,4 +81,4 @@ docs/{adr,benchmarks}/  tests/e2e/
 - **≥ 65% coverage** on gated packages
 - **Cursor rules** in [`.cursor/rules/`](./.cursor/rules/) enforce contract-first + CPU-fallback automatically
 
-Phase 0 status: monorepo scaffold, model contract, ADR-001/002, CI skeleton. Serving backends land in later phases.
+Phase 1 status: reference model pins, conformance suite + client SDK, k6 benchmark harness. Real backends land in later phases.

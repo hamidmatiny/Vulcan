@@ -1,0 +1,7 @@
+# CPU-only export toolchain (ADR-002). Do not install CUDA builds in CI.
+huggingface_hub>=0.24
+safetensors>=0.4
+torch==2.2.2
+torchvision==0.17.2
+onnx==1.16.2
+numpy>=1.26,<2.0

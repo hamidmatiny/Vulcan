@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "backend": "reference",
+  "modality": "llm",
+  "model_id": "reference-tiny-llm",
+  "target_url": "http://127.0.0.1:8080",
+  "started_at": "2026-07-26T03:42:29.458Z",
+  "duration_seconds": 5.035,
+  "vus": 2,
+  "runtime_mode": "cpu",
+  "notes": "k6 smoke against trivial reference server (phase-1). CPU-only; GPU runs are manual \u2014 see docs/benchmarks/.",
+  "metrics": {
+    "requests_total": 599,
+    "error_rate": 0,
+    "throughput_rps": 118.972,
+    "latency_ms": {
+      "p50": 4.119,
+      "p95": 6.818,
+      "p99": 8.707,
+      "avg": 4.473,
+      "max": 18.991
+    }
+  }
+}

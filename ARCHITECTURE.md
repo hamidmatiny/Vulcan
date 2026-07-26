@@ -72,9 +72,11 @@ Schedulers (Kueue, Karpenter) consume this manifest; they never appear in CI app
 | Phase | Focus |
 |-------|--------|
 | **0** | Monorepo, model contract, ADR-001/002, CI skeleton, Cursor rules |
-| **1+** | `serving/common` + first CPU-dev backend, gateway stub |
+| **1** | Reference model pins, conformance suite + client SDK, k6 harness |
+| **2+** | First real CPU-dev backend(s), gateway stub |
 | **N** | Remaining backends, GPU infra manifests (validate-only), autoscaling |
 | **N** | Pipelines, Bedrock facade, observability, console, e2e |
+| **16** | Finalize cross-backend benchmark comparison from `benchmark/results/` |
 
 ## Non-goals (phase 0)
 

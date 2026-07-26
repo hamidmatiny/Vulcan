@@ -1,0 +1,14 @@
+{
+  "model_id": "reference-tiny-vision",
+  "source_weights": "ResNet18_Weights.IMAGENET1K_V1",
+  "source_weights_url": "https://download.pytorch.org/models/resnet18-f37072fd.pth",
+  "source_weights_sha256": "f37072fd47e89c5e827621c5baffa7500819f7896bbacec160b1a16c560e07ec",
+  "format": "onnx",
+  "opset": 17,
+  "files": {
+    "export-meta.json": "bb0d74fc9f600c088804f5649ee6888e7ece87eba6f3e37ff1b7a6ffd21cf1cc",
+    "imagenet_classes.json": "47c75d27d7a4c62415c9c1c4536ac98c68e1417b880987dbc5b166c3b7ebf1d9",
+    "model.onnx": "7b7aa3632a82316840b62325e940c392f1db84b80d0eef30a3c06e0dc303c10f",
+    "preprocess.json": "f9df32d8b268b1a17b79ea9d35a24beb63bb3dd7a0be0917a10d86138962d49b"
+  }
+}
