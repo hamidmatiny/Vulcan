@@ -1,8 +1,9 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
-	lint reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
-	benchmark-triton benchmark-vllm benchmark-compare models-export models-verify \
-	triton-prepare wait-for-health validate-kserve validate-gpu-infra help
+	test-checkpointing lint reference-server benchmark-smoke benchmark-bentoml \
+	benchmark-ray-serve benchmark-triton benchmark-vllm benchmark-compare \
+	models-export models-verify triton-prepare wait-for-health validate-kserve \
+	validate-gpu-infra validate-autoscaling help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -10,6 +11,8 @@ CONTRACTS_DIR := contracts/model-contract
 CONTRACTS_VENV := $(CONTRACTS_DIR)/.venv
 SERVING_COMMON_DIR := serving/common
 SERVING_COMMON_VENV := $(SERVING_COMMON_DIR)/.venv
+CHECKPOINTING_DIR := autoscaling/checkpointing
+CHECKPOINTING_VENV := $(CHECKPOINTING_DIR)/.venv
 MODELS_VENV := models/.venv
 COVERAGE_MIN ?= 65
 # Vulcan host ports: 9000–9099
@@ -156,6 +159,19 @@ validate-kserve: ## helm template + kubeconform + conftest (no cluster apply)
 
 validate-gpu-infra: ## terraform validate/plan + GPU Operator/MIG helm+conftest (no apply)
 	bash gpu-infra/scripts/validate.sh
+
+validate-autoscaling: ## Karpenter helm template + kubeconform + conftest (no apply)
+	bash autoscaling/karpenter/scripts/validate.sh
+
+$(CHECKPOINTING_VENV)/bin/pytest: $(CHECKPOINTING_DIR)/pyproject.toml
+	$(PYTHON) -m venv $(CHECKPOINTING_VENV)
+	$(CHECKPOINTING_VENV)/bin/pip install -U pip
+	$(CHECKPOINTING_VENV)/bin/pip install -e "$(CHECKPOINTING_DIR)[dev]"
+
+test-checkpointing: $(CHECKPOINTING_VENV)/bin/pytest ## Checkpoint-on-SIGTERM / resume (≥65%)
+	cd $(CHECKPOINTING_DIR) && .venv/bin/pytest -q \
+		--cov=vulcan_checkpointing --cov-report=term-missing \
+		--cov-fail-under=$(COVERAGE_MIN)
 
 benchmark-compare: ## Markdown table from benchmark/results/*.json
 	$(PYTHON) benchmark/scripts/compare_results.py --skip-schema 2>/dev/null || \

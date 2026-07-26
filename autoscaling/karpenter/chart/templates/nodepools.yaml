@@ -1,0 +1,57 @@
+{{- range $key, $pool := .Values.nodePools }}
+{{- if $pool.enabled }}
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: {{ $pool.name }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: karpenter
+    vulcan.dev/nodepool: {{ $key }}
+spec:
+  weight: {{ default 10 $pool.weight }}
+  limits:
+    cpu: {{ $.Values.limits.cpu | quote }}
+    memory: {{ $.Values.limits.memory }}
+  disruption:
+    consolidationPolicy: {{ $.Values.disruption.consolidationPolicy }}
+    consolidateAfter: {{ $.Values.disruption.consolidateAfter }}
+    budgets:
+      {{- if $pool.budgets }}
+      {{- toYaml $pool.budgets | nindent 6 }}
+      {{- else }}
+      {{- toYaml $.Values.disruption.budgets | nindent 6 }}
+      {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- toYaml $pool.labels | nindent 8 }}
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: vulcan-gpu
+      expireAfter: 720h
+      terminationGracePeriod: 5m
+      taints:
+        - key: nvidia.com/gpu
+          value: "true"
+          effect: NoSchedule
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values:
+            {{- toYaml $pool.capacityTypes | nindent 12 }}
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            {{- toYaml $pool.instanceTypes | nindent 12 }}
+{{- end }}
+{{- end }}

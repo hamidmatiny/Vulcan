@@ -31,6 +31,7 @@ jobs:
       vllm_gate: ${{ steps.filter.outputs.vllm_gate }}
       kserve_gate: ${{ steps.filter.outputs.kserve_gate }}
       gpu_infra_gate: ${{ steps.filter.outputs.gpu_infra_gate }}
+      autoscaling_gate: ${{ steps.filter.outputs.autoscaling_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +48,9 @@ jobs:
               - 'infra/terraform/**'
               - 'docs/adr/003-mig-partitioning-strategy.md'
               - 'docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md'
+            autoscaling_gate:
+              - 'autoscaling/**'
+              - 'docs/adr/005-spot-gpu-strategy.md'
             bentoml_gate:
               - 'serving/bentoml/**'
               - 'contracts/**'
@@ -567,14 +571,51 @@ jobs:
       - name: Validate GPU Operator / MIG / Terraform (no apply)
         run: make validate-gpu-infra
 
+  autoscaling:
+    name: Autoscaling · Karpenter validate + checkpoint pytest
+    needs: changes
+    if: needs.changes.outputs.autoscaling_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+      - name: Install kubeconform
+        env:
+          KUBECONFORM_VERSION: "0.6.7"
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install /tmp/kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+      - name: Install conftest
+        env:
+          CONFTEST_VERSION: "0.55.0"
+        run: |
+          curl -fsSL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install /tmp/conftest /usr/local/bin/conftest
+          conftest --version
+      - name: Validate Karpenter manifests (no cluster apply)
+        run: make validate-autoscaling
+      - name: Checkpoint-resume SIGTERM simulation
+        run: make test-checkpointing
+
   adr-gate:
-    name: ADR gate (contracts / gpu-infra)
+    name: ADR gate (contracts / gpu-infra / autoscaling)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Fail if ADR missing for contracts/ or gpu-infra/ changes
+      - name: Fail if ADR missing for contracts/, gpu-infra/, or autoscaling/ changes
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
         run: |

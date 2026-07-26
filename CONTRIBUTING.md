@@ -39,7 +39,7 @@ Ad hoc subjects are not allowed. If a change spans phases, prefer splitting PRs;
 
 ## ADR gate
 
-CI fails if changes land under `contracts/` or `gpu-infra/` without evidence of ADR coverage (see `.github/scripts/check-adr-gate.sh`). When in doubt, add or update an ADR in the same PR.
+CI fails if changes land under `contracts/`, `gpu-infra/`, or `autoscaling/` without evidence of ADR coverage (see `.github/scripts/check-adr-gate.sh`). When in doubt, add or update an ADR in the same PR.
 
 ## Local commands
 

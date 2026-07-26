@@ -1,0 +1,88 @@
+# Labels MUST match phase 7 Terraform + phase 8 Kueue ResourceFlavors
+# (vulcan.dev/gpu, vulcan.dev/mig, vulcan.dev/gpu-pool, nvidia.com/mig.config).
+
+clusterName: vulcan
+amiFamily: AL2
+# Placeholder role/subnet/sg — replace out-of-band; CI only templates.
+role: KarpenterNodeRole-vulcan
+securityGroupSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: vulcan
+subnetSelectorTerms:
+  - tags:
+      karpenter.sh/discovery: vulcan
+
+# Disruption: never consolidate away more than this fraction of a NodePool at once
+# so a spot wave / consolidation pass cannot drain every replica of a backend.
+disruption:
+  consolidationPolicy: WhenEmptyOrUnderutilized
+  consolidateAfter: 5m
+  # Rate-limit voluntary disruption (drift/emptiness/consolidation).
+  # Spot interruption notices are AWS-driven; budgets still limit Karpenter-initiated drains.
+  budgets:
+    - nodes: "20%"
+      reasons:
+        - Empty
+        - Underutilized
+        - Drifted
+    # Hard cap: never voluntarily disrupt more than 1 node when pool is small.
+    - nodes: "1"
+
+nodePools:
+  gpuInference:
+    enabled: true
+    name: vulcan-gpu-inference
+    # Real-time inference → prefer on-demand (ADR-005). Spot only as overflow.
+    capacityTypes:
+      - on-demand
+      - spot
+    instanceTypes:
+      - g5.xlarge
+      - g5.2xlarge
+    labels:
+      vulcan.dev/gpu: "true"
+      nvidia.com/gpu: "true"
+      nvidia.com/mig.config: all-disabled
+      vulcan.dev/gpu-pool: inference
+      vulcan.dev/workload: gpu-inference
+    # Tighter budget than defaults for inference HA.
+    budgets:
+      - nodes: "10%"
+      - nodes: "1"
+
+  migSmall:
+    enabled: true
+    name: vulcan-gpu-mig-small
+    capacityTypes:
+      - spot
+      - on-demand
+    instanceTypes:
+      - p4d.24xlarge
+    labels:
+      vulcan.dev/gpu: "true"
+      nvidia.com/gpu: "true"
+      nvidia.com/mig.config: many-small-inference
+      vulcan.dev/mig: many-small-inference
+      vulcan.dev/gpu-pool: mig-small
+      vulcan.dev/workload: gpu-inference
+
+  migLarge:
+    enabled: true
+    name: vulcan-gpu-mig-large
+    # Training / large-batch → spot-first (ADR-005); checkpoint-resume required.
+    capacityTypes:
+      - spot
+      - on-demand
+    instanceTypes:
+      - p4d.24xlarge
+    labels:
+      vulcan.dev/gpu: "true"
+      nvidia.com/gpu: "true"
+      nvidia.com/mig.config: training-large-batch
+      vulcan.dev/mig: training-large-batch
+      vulcan.dev/gpu-pool: mig-large
+      vulcan.dev/workload: gpu-inference
+
+limits:
+  cpu: "256"
+  memory: 2048Gi

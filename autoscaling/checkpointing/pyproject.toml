@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vulcan-checkpointing"
+version = "0.9.0"
+description = "Checkpoint-on-SIGTERM / resume-on-restart for Vulcan GPU training jobs (spot + Kueue)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.5",
+]
+
+[project.scripts]
+vulcan-checkpoint-finetune = "vulcan_checkpointing.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["vulcan_checkpointing"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 65
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
