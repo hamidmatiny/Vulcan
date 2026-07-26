@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "backend": "ray-serve",
+  "modality": "llm",
+  "model_id": "reference-tiny-llm",
+  "target_url": "http://127.0.0.1:9002",
+  "started_at": "2026-07-26T04:03:15.192Z",
+  "duration_seconds": 10.176,
+  "vus": 2,
+  "runtime_mode": "cpu",
+  "notes": "Short CPU k6 regression against serving/ray-serve (phase-3). Not a perf claim; GPU runs are manual \u2014 see docs/benchmarks/.",
+  "metrics": {
+    "requests_total": 76,
+    "error_rate": 0,
+    "throughput_rps": 7.468,
+    "latency_ms": {
+      "p50": 257.871,
+      "p95": 266.807,
+      "p99": 270.977,
+      "avg": 257.398,
+      "max": 275.781
+    }
+  }
+}

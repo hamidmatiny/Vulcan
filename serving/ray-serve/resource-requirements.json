@@ -1,0 +1,16 @@
+{
+  "model_id": "reference-tiny-llm",
+  "backend": "ray-serve",
+  "gpu_memory_mib": {
+    "min": 0,
+    "max": 0
+  },
+  "supports_mig": false,
+  "supports_quantization": true,
+  "cold_start_seconds": {
+    "min": 10,
+    "max": 90
+  },
+  "cpu_dev_mode": true,
+  "notes": "CPU-dev Ray Serve deployment for reference-tiny-llm (GPT-2) + reference-tiny-vision (ResNet-18 ONNX). Replica scaling is inference-time (Ray Serve), not Ray Core data-plane. GPU memory 0 in this artifact; see serve-config.gpu.yaml for non-CI CUDA."
+}

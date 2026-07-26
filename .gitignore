@@ -66,4 +66,5 @@ models/**/*.gguf
 models/.venv/
 models/artifacts/**/.cache/
 serving/bentoml/.venv/
+serving/ray-serve/.venv/
 !models/**/.gitkeep

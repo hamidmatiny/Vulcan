@@ -4,6 +4,12 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 3 — Ray Serve adapter
+
+- `serving/ray-serve/` on host port **9002**: contract-compliant Ray Serve deployments for both phase-1 reference models
+- README contrasts **Ray Serve** (inference replicas) vs **Ray Core** (ingest/task plane elsewhere)
+- CPU Dockerfile + compose; GPU `serve-config.gpu.yaml` documented, not CI; conformance + short k6 → `benchmark/results/ray-serve-cpu.json`
+
 ### Phase 2 — BentoML adapter
 
 - Host port convention **9000–9099** (documented in `.cursor/rules` + `docker-compose.yml`)

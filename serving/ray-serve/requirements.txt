@@ -1,0 +1,17 @@
+# CPU-only runtime for Vulcan Ray Serve adapter (ADR-002).
+# Install torch separately from the CPU wheel index (see Dockerfile / README).
+setuptools>=69,<82
+ray[serve]>=2.30,<2.40
+# FastAPI/Starlette pins: newer Starlette embeds locks that Ray cannot pickle for @serve.ingress.
+fastapi>=0.110,<0.116
+starlette>=0.36,<0.38
+uvicorn>=0.30
+transformers>=4.40,<4.47
+safetensors>=0.4
+onnxruntime>=1.17,<1.20
+Pillow>=10.0
+numpy>=1.26,<2.0
+prometheus-client>=0.20
+httpx>=0.27
+jsonschema>=4.22
+PyYAML>=6.0

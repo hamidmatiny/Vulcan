@@ -55,7 +55,8 @@ Prefer small PRs mapped to a single phase or component.
 - Reserved map (extend in compose comments as services land):
   - `9000` — `serving/bentoml`
   - `9001` — `serving/common` reference server
-  - `9002–9098` — future backends / gateway / obs
+  - `9002` — `serving/ray-serve`
+  - `9003–9098` — future backends / gateway / obs
   - `9099` — optional contract-stub / docs static
 - Reference server, stubs, and compose `ports:` MUST use this range. Never default to `8080`/`8090`/etc.
 

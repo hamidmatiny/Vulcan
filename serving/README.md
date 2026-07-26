@@ -6,7 +6,7 @@ Contract-compliant model-serving backends. Each subdirectory implements [`contra
 |---------|--------|-----------|
 | [`common/`](./common/) | Client SDK, conformance, reference server | **9001** |
 | [`bentoml/`](./bentoml/) | Phase 2 — both reference models, contract-complete | **9000** |
-| [`ray-serve/`](./ray-serve/) | Stub | TBD in 9000–9099 |
+| [`ray-serve/`](./ray-serve/) | Phase 3 — both reference models, contract-complete | **9002** |
 | [`triton/`](./triton/) | Stub | TBD in 9000–9099 |
 | [`vllm/`](./vllm/) | Stub | TBD in 9000–9099 |
 | [`kserve/`](./kserve/) | Stub | TBD in 9000–9099 |

@@ -1,7 +1,7 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
-	lint reference-server benchmark-smoke benchmark-bentoml benchmark-compare \
-	models-export models-verify help
+	lint reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
+	benchmark-compare models-export models-verify help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -15,12 +15,13 @@ COVERAGE_MIN ?= 65
 REF_HOST ?= 127.0.0.1
 REF_PORT ?= 9001
 BENTOML_PORT ?= 9000
+RAY_SERVE_PORT ?= 9002
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?##"}; {printf "  %-22s %s\n", $$1, $$2}'
 
-up: ## Start local stack (bentoml on :9000; CPU-only)
-	$(COMPOSE) up -d --build bentoml
+up: ## Start local stack (bentoml :9000, ray-serve :9002; CPU-only)
+	$(COMPOSE) up -d --build bentoml ray-serve
 
 down: ## Stop local stack
 	$(COMPOSE) down
@@ -87,6 +88,13 @@ benchmark-bentoml: ## Short CPU k6 against bentoml (:9000) → bentoml-cpu.json
 	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
 	VUS=2 DURATION=10s BACKEND_NAME=bentoml \
 	RESULTS_OUT=benchmark/results/bentoml-cpu.json \
+	bash benchmark/scripts/run_k6.sh
+
+benchmark-ray-serve: ## Short CPU k6 against ray-serve (:9002) → ray-serve-cpu.json
+	BASE_URL=http://$(REF_HOST):$(RAY_SERVE_PORT) \
+	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
+	VUS=2 DURATION=10s BACKEND_NAME=ray-serve \
+	RESULTS_OUT=benchmark/results/ray-serve-cpu.json \
 	bash benchmark/scripts/run_k6.sh
 
 benchmark-compare: ## Markdown table from benchmark/results/*.json

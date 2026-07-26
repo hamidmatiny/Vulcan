@@ -1,0 +1,27 @@
+# GPU Ray Serve config — DOCUMENTATION / MANUAL ONLY (ADR-002).
+# Never applied by CI. Example out-of-band run on a CUDA host:
+#
+#   export VULCAN_RUNTIME_MODE=gpu
+#   export VULCAN_MODELS_DIR=/path/to/models/artifacts
+#   serve run service:app --config-file serving/ray-serve/serve-config.gpu.yaml
+#
+# Or containerize with a CUDA base + NVIDIA Container Toolkit; do not add
+# this file to GitHub Actions workflows.
+
+proxy_location: EveryNode
+
+http_options:
+  host: 0.0.0.0
+  port: 9002
+
+applications:
+  - name: vulcan-ray-serve
+    route_prefix: /
+    import_path: service:app
+    deployments:
+      - name: vulcan-ray-serve
+        num_replicas: 1
+        ray_actor_options:
+          num_gpus: 1
+          num_cpus: 2
+        max_ongoing_requests: 16
