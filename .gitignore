@@ -1,0 +1,66 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Env / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+.coverage
+htmlcov/
+dist/
+build/
+.venv-ci*/
+
+# Node / TypeScript
+node_modules/
+.turbo/
+.next/
+*.tsbuildinfo
+
+# Go
+bin/
+*.exe
+*.test
+coverage.out
+vendor/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+
+# Helm
+charts/**/charts/
+*.tgz
+
+# Misc
+*.log
+tmp/
+.cache/
+.direnv/
+
+# Model weights (keep manifests; ignore large binaries)
+models/**/*.bin
+models/**/*.pt
+models/**/*.pth
+models/**/*.onnx
+models/**/*.safetensors
+models/**/*.gguf
+!models/**/.gitkeep

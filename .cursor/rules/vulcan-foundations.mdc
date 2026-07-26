@@ -1,0 +1,54 @@
+---
+description: Vulcan foundations — contract-first, CPU-fallback, ADRs, phase commits, coverage, no GPU CI spend
+alwaysApply: true
+---
+
+# Vulcan foundations
+
+Sibling bar to Argus. These rules apply to every phase — do not re-litigate them in chat.
+
+## Contract-first serving
+
+- Every serving backend under `serving/*` MUST implement `contracts/model-contract` exactly: `GET /health`, `GET /metrics`, `POST /v1/infer`, `GET /v1/resources` (+ static resource-requirements manifest).
+- Do not expose per-backend native APIs as the north-bound platform surface. Adapters wrap natives; the OpenAPI/JSON Schema contract is the API ([ADR-001](docs/adr/001-unified-model-serving-contract.md)).
+- Contract changes update OpenAPI + JSON Schema + tests together.
+
+## CPU-fallback mandatory (no GPU spend in CI)
+
+- CI **never** provisions or runs against real GPU hardware or cloud GPU nodes ([ADR-002](docs/adr/002-gpu-cost-safety-policy.md)).
+- Every serving backend MUST have a CPU-only dev mode against a small reference model (`cpu_dev_mode: true`).
+- GPU infra under `gpu-infra/` and `infra/` is **validated** in CI (`terraform validate|plan`, `helm template` + kubeconform, conftest/OPA) but **never applied** by automation.
+- Real GPU benchmarks are manual only — document under `docs/benchmarks/`.
+
+## ADR discipline
+
+- Meaningful architectural choices get an ADR in `docs/adr/` before or with the implementing PR.
+- Changes under `contracts/` or `gpu-infra/` without a corresponding ADR update fail CI (ADR presence gate).
+- Link new ADRs from `docs/adr/index.md` and the root README when user-facing.
+
+## Phase-commit convention
+
+```text
+phase-N: short description
+```
+
+Examples: `phase-0: foundations, model contract, and CI skeleton`, `phase-2: add vLLM CPU-dev backend`.
+
+Prefer small PRs mapped to a single phase or component.
+
+## Coverage gate
+
+- Gated packages must keep **≥ 65%** coverage in CI (`COVERAGE_MIN=65`), same bar as Argus.
+- New libraries/services add unit tests before claiming done; do not lower the gate.
+
+## Layout
+
+- Contracts in `contracts/`; serving adapters in `serving/{common,bentoml,ray-serve,triton,vllm,kserve}/`.
+- GPU orchestration in `gpu-infra/` and `autoscaling/`; cloud packaging in `infra/{terraform,helm,argocd}/`.
+- Docs and ADRs in `docs/`; do not invent parallel top-level doc trees.
+- Every component ships a `README.md`.
+
+## Secrets & local stack
+
+- Never commit secrets; use `.env.example`.
+- Default `make up` is CPU-only via `docker-compose.yml`.

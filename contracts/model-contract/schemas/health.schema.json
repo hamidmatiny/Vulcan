@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulcan.dev/schemas/health.schema.json",
+  "title": "HealthResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "backend", "model_id", "version", "mode"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["ok", "starting", "error"]
+    },
+    "backend": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["cpu", "gpu"]
+    },
+    "detail": {
+      "type": "string"
+    }
+  }
+}

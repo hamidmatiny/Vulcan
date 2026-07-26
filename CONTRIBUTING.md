@@ -1,0 +1,51 @@
+# Contributing to Vulcan
+
+Thanks for helping build Vulcan. This repository is developed in **explicit phases** so each layer stays reviewable and production-shaped — same engineering bar as Argus.
+
+## Phase-based commits
+
+Commit messages must use the phase prefix:
+
+```text
+phase-N: short description
+```
+
+Example: `phase-0: foundations, model contract, and CI skeleton`.
+
+If a change spans phases, prefer splitting PRs; if inseparable, use the **lowest** phase the change primarily advances.
+
+## Before you open a PR
+
+1. Read [ARCHITECTURE.md](./ARCHITECTURE.md) and the component `README.md` you touch.
+2. Follow [`.cursor/rules/`](./.cursor/rules/) (always-on foundations).
+3. Serving backends must implement [`contracts/model-contract`](./contracts/model-contract/) exactly ([ADR-001](./docs/adr/001-unified-model-serving-contract.md)).
+4. Preserve **CPU-only dev mode**; never add CI steps that provision or run real GPUs ([ADR-002](./docs/adr/002-gpu-cost-safety-policy.md)).
+5. Architectural choices → new/updated ADR under `docs/adr/`, linked from `docs/adr/index.md`.
+6. Coverage for gated packages **≥ 65%** (CI `COVERAGE_MIN`).
+7. Run `make lint` and `make test`. Use `make up` / `make down` if you touch compose.
+8. Update `.env.example` when you introduce new configuration.
+9. Do not commit secrets, credentials, or production model weights with licenses that forbid redistribution.
+
+## Definition of done — every new service
+
+1. `README.md` — purpose, how to run, env vars
+2. Implements the model contract when it is a serving backend
+3. CPU-dev mode + reference model path (serving)
+4. Health + Prometheus metrics endpoints
+5. Structured logging
+6. Tests with coverage ≥ 65% for gated packages
+7. Dockerfile when the component is runnable
+
+## ADR gate
+
+CI fails if changes land under `contracts/` or `gpu-infra/` without evidence of ADR coverage (see `.github/scripts/check-adr-gate.sh`). When in doubt, add or update an ADR in the same PR.
+
+## Local commands
+
+| Target | Action |
+|--------|--------|
+| `make up` | Start local compose stack (CPU-only) |
+| `make down` | Stop compose stack |
+| `make logs` | Follow compose logs |
+| `make test` | Run unit tests |
+| `make lint` | Run linters |

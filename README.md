@@ -1,0 +1,80 @@
+# Vulcan
+
+[![CI](https://github.com/hamidmatiny/Vulcan/actions/workflows/ci.yml/badge.svg)](https://github.com/hamidmatiny/Vulcan/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
+[![Coverage gate](https://img.shields.io/badge/coverage-%E2%89%A565%25-brightgreen)](./.github/workflows/ci.yml)
+
+**Vulcan** is a production-shaped multi-backend model-serving and GPU-orchestration platform — sibling project to [Argus](https://github.com/hamidmatiny/Argus). One serving contract, many runtimes (BentoML, Ray Serve, Triton, vLLM, KServe), with GPU infra that is validated in CI and applied only out-of-band.
+
+**Docs:** [ARCHITECTURE.md](./ARCHITECTURE.md) · [ADRs](./docs/adr/) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [Benchmarks (manual)](./docs/benchmarks/) · [CHANGELOG](./CHANGELOG.md)
+
+| ADR | Decision |
+|-----|----------|
+| [ADR-001](./docs/adr/001-unified-model-serving-contract.md) | Unified model serving contract (not per-backend APIs) |
+| [ADR-002](./docs/adr/002-gpu-cost-safety-policy.md) | GPU cost-safety policy — no real GPUs in CI |
+
+---
+
+## Architecture (north star)
+
+```mermaid
+flowchart LR
+  Client["clients / console"] --> GW["gateway"]
+  GW --> Contract["model-contract\n/health /metrics /v1/infer"]
+  Contract --> Bento["serving/bentoml"]
+  Contract --> Ray["serving/ray-serve"]
+  Contract --> Triton["serving/triton"]
+  Contract --> VLLM["serving/vllm"]
+  Contract --> KServe["serving/kserve"]
+  GPU["gpu-infra + autoscaling"] -.->|"schedule / scale"| Contract
+  Obs["observability"] --> GW
+  Obs --> Contract
+```
+
+Full design: [ARCHITECTURE.md](./ARCHITECTURE.md)
+
+---
+
+## Quick start
+
+```bash
+git clone https://github.com/hamidmatiny/Vulcan.git && cd Vulcan
+cp .env.example .env
+make up          # CPU-only compose placeholders
+make test        # unit tests (contracts package)
+make lint
+make down
+```
+
+> **GPU policy:** CI and `make up` never provision real GPUs. Manual GPU benchmarks live in [`docs/benchmarks/`](./docs/benchmarks/) ([ADR-002](./docs/adr/002-gpu-cost-safety-policy.md)).
+
+---
+
+## Repository layout
+
+```text
+contracts/model-contract/     OpenAPI + JSON Schema (platform contract)
+serving/{common,bentoml,...}/ Contract-compliant backends
+gateway/                      North-south API surface
+benchmark/                    Harnesses (CPU local; GPU manual)
+gpu-infra/{gpu-operator,mig,kueue}/
+autoscaling/{karpenter,checkpointing}/
+pipelines/{kubeflow,sagemaker}/
+bedrock-gateway/
+infra/{terraform,helm,argocd}/
+observability/  console/  models/
+docs/{adr,benchmarks}/  tests/e2e/
+```
+
+---
+
+## Engineering bar
+
+- **Phased commits:** `phase-N: short description`
+- **ADRs** for architectural decisions under `docs/adr/`
+- **README per component**
+- **CI from day one** — lint, tests, ADR gate for `contracts/` + `gpu-infra/`
+- **≥ 65% coverage** on gated packages
+- **Cursor rules** in [`.cursor/rules/`](./.cursor/rules/) enforce contract-first + CPU-fallback automatically
+
+Phase 0 status: monorepo scaffold, model contract, ADR-001/002, CI skeleton. Serving backends land in later phases.

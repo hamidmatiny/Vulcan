@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulcan.dev/schemas/infer-response.schema.json",
+  "title": "InferResponse",
+  "description": "Discriminated union on modality (llm | vision).",
+  "oneOf": [
+    { "$ref": "#/$defs/InferResponseLlm" },
+    { "$ref": "#/$defs/InferResponseVision" }
+  ],
+  "$defs": {
+    "TokenUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+      "properties": {
+        "prompt_tokens": { "type": "integer", "minimum": 0 },
+        "completion_tokens": { "type": "integer", "minimum": 0 },
+        "total_tokens": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "FinishReason": {
+      "type": "string",
+      "enum": ["stop", "length", "error", "content_filter"]
+    },
+    "LabelScore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "score"],
+      "properties": {
+        "name": { "type": "string" },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "LlmOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "finish_reason"],
+      "properties": {
+        "text": { "type": "string" },
+        "finish_reason": { "$ref": "#/$defs/FinishReason" },
+        "usage": { "$ref": "#/$defs/TokenUsage" }
+      }
+    },
+    "VisionOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finish_reason"],
+      "properties": {
+        "text": { "type": "string" },
+        "labels": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LabelScore" }
+        },
+        "finish_reason": { "$ref": "#/$defs/FinishReason" },
+        "usage": { "$ref": "#/$defs/TokenUsage" }
+      }
+    },
+    "InferResponseLlm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "modality", "model_id", "output", "latency_ms"],
+      "properties": {
+        "request_id": { "type": "string" },
+        "modality": { "const": "llm" },
+        "model_id": { "type": "string" },
+        "output": { "$ref": "#/$defs/LlmOutput" },
+        "latency_ms": { "type": "number", "minimum": 0 }
+      }
+    },
+    "InferResponseVision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "modality", "model_id", "output", "latency_ms"],
+      "properties": {
+        "request_id": { "type": "string" },
+        "modality": { "const": "vision" },
+        "model_id": { "type": "string" },
+        "output": { "$ref": "#/$defs/VisionOutput" },
+        "latency_ms": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

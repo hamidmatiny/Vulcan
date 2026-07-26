@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulcan.dev/schemas/resource-requirements.schema.json",
+  "title": "ResourceRequirements",
+  "description": "Declared GPU/runtime resource requirements for a model+backend pair. Used by schedulers (Kueue, Karpenter) and packaging.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "model_id",
+    "backend",
+    "gpu_memory_mib",
+    "supports_mig",
+    "supports_quantization",
+    "cold_start_seconds",
+    "cpu_dev_mode"
+  ],
+  "properties": {
+    "model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "backend": {
+      "type": "string",
+      "minLength": 1
+    },
+    "gpu_memory_mib": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum GPU memory required (MiB). 0 means CPU-capable."
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum GPU memory the backend will use (MiB)."
+        }
+      }
+    },
+    "supports_mig": {
+      "type": "boolean",
+      "description": "Whether the deployment can run under NVIDIA MIG partitions."
+    },
+    "supports_quantization": {
+      "type": "boolean",
+      "description": "Whether quantized weights (INT8/INT4/AWQ/GPTQ/etc.) are supported."
+    },
+    "cold_start_seconds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "number", "minimum": 0 },
+        "max": { "type": "number", "minimum": 0 }
+      }
+    },
+    "cpu_dev_mode": {
+      "type": "boolean",
+      "description": "MUST be true for artifacts used in CI or local compose (ADR-002)."
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

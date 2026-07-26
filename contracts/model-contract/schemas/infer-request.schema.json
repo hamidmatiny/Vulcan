@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulcan.dev/schemas/infer-request.schema.json",
+  "title": "InferRequest",
+  "description": "Discriminated union on modality (llm | vision).",
+  "oneOf": [
+    { "$ref": "#/$defs/InferRequestLlm" },
+    { "$ref": "#/$defs/InferRequestVision" }
+  ],
+  "$defs": {
+    "ChatMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "content"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["system", "user", "assistant"]
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "LlmInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messages"],
+      "properties": {
+        "messages": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/ChatMessage" }
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 256
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.7
+        },
+        "stop": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "VisionImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["media_type", "data_base64"],
+      "properties": {
+        "media_type": {
+          "type": "string",
+          "enum": ["image/png", "image/jpeg", "image/webp"]
+        },
+        "data_base64": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "VisionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["images"],
+      "properties": {
+        "images": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/VisionImage" }
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 256
+        }
+      }
+    },
+    "InferRequestLlm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "modality", "model_id", "input"],
+      "properties": {
+        "request_id": { "type": "string", "minLength": 1 },
+        "modality": { "const": "llm" },
+        "model_id": { "type": "string", "minLength": 1 },
+        "input": { "$ref": "#/$defs/LlmInput" },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "InferRequestVision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "modality", "model_id", "input"],
+      "properties": {
+        "request_id": { "type": "string", "minLength": 1 },
+        "modality": { "const": "vision" },
+        "model_id": { "type": "string", "minLength": 1 },
+        "input": { "$ref": "#/$defs/VisionInput" },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

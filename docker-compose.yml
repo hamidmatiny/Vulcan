@@ -1,0 +1,27 @@
+# Vulcan local stack — CPU-only by policy (ADR-002).
+# Phase 0: placeholder observability-friendly stub so `make up` is meaningful.
+# Real serving backends land in later phases and MUST expose model-contract routes.
+
+name: vulcan
+
+services:
+  # Tiny static placeholder so compose has a healthy service in phase 0.
+  # Replace/extend with serving/*/ CPU-dev backends in later phases.
+  contract-stub:
+    image: nginx:1.27-alpine
+    profiles: ["full"]
+    ports:
+      - "${VULCAN_SERVING_PORT:-8080}:80"
+    volumes:
+      - ./contracts/model-contract/openapi.yaml:/usr/share/nginx/html/openapi.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Default phase-0 service: busybox so `make up` works without pulling heavy ML images.
+  vulcan-ready:
+    image: busybox:1.36
+    command: ["sh", "-c", "echo 'vulcan phase-0: CPU-only scaffold ready (ADR-002)'; sleep infinity"]
+    restart: unless-stopped
