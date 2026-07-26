@@ -92,6 +92,48 @@ def test_infer_response_llm() -> None:
     validate_instance(response, "infer-response")
 
 
+def test_infer_request_with_routing_constraints() -> None:
+    req = {
+        **LLM_REQUEST,
+        "constraints": {
+            "max_latency_ms": 500,
+            "max_cost_usd_per_1k_tokens": 0.01,
+            "preferred_region": "us-east-1",
+        },
+    }
+    validate_instance(req, "infer-request")
+
+
+def test_infer_response_with_routing_decision() -> None:
+    response = {
+        "request_id": "req-1",
+        "modality": "llm",
+        "model_id": "reference-tiny-llm",
+        "output": {"text": "Hello", "finish_reason": "stop"},
+        "latency_ms": 1.2,
+        "routing": {
+            "selected_backend": "bentoml",
+            "policy": "adr-006-v1",
+            "fallback": True,
+            "attempts": [
+                {"backend": "vllm", "outcome": "unhealthy", "detail": "health starting"},
+                {"backend": "bentoml", "outcome": "selected", "detail": "healthy"},
+            ],
+            "candidates": [
+                {
+                    "backend": "bentoml",
+                    "rank": 1,
+                    "score": 0.2,
+                    "latency_p95_ms": 284.8,
+                    "cost_usd_per_1k_tokens": None,
+                    "data_source": "benchmark/results/bentoml-cpu.json",
+                }
+            ],
+        },
+    }
+    validate_instance(response, "infer-response")
+
+
 def test_health_schema() -> None:
     validate_instance(
         {

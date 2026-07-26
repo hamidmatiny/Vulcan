@@ -9,7 +9,8 @@
 #   9099 — contract OpenAPI stub (optional profile: stub)
 #   9005 — optional KServe port-forward (no compose service)
 #   9006 — bedrock-gateway optional local shim (no compose; moto in CI)
-#   9007–9098 — reserved for later backends / gateway / observability
+#   9007 — gateway (routing; ADR-006)
+#   9008–9098 — reserved for later backends / observability
 
 name: vulcan
 
@@ -144,6 +145,40 @@ services:
       timeout: 5s
       retries: 36
       start_period: 120s
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    image: vulcan-gateway:cpu
+    ports:
+      - "${VULCAN_GATEWAY_PORT:-9007}:9007"
+    environment:
+      PORT: "9007"
+      VULCAN_RUNTIME_MODE: cpu
+      VULCAN_RESOURCES_PATH: /app/resource-requirements.json
+      VULCAN_BENCHMARK_DIR: /benchmarks
+      VULCAN_BEDROCK_PRICING: /pricing/pricing-reference.json
+      VULCAN_BENTOML_URL: http://bentoml:9000
+      VULCAN_RAY_SERVE_URL: http://ray-serve:9002
+      VULCAN_TRITON_URL: http://triton:9003
+      VULCAN_VLLM_URL: http://vllm:9004
+      # kserve/sagemaker/bedrock URLs intentionally empty in local compose (see gateway/README)
+    volumes:
+      - ./benchmark/results:/benchmarks:ro
+      - ./bedrock-gateway/pricing-reference.json:/pricing/pricing-reference.json:ro
+    depends_on:
+      bentoml:
+        condition: service_healthy
+      ray-serve:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9007/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
     restart: unless-stopped
 
   # Phase-1 trivial reference server (no real weights) — optional.

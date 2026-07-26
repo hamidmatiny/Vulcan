@@ -4,6 +4,13 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 13 — Routing gateway and benchmark-driven backend selection
+
+- `gateway/`: Go router on **:9007**; selects using `benchmark/results/*.json` + Bedrock pricing-reference
+- Circuit-break / fallback with legible `routing` on infer responses; optional request `constraints`
+- [ADR-006](./docs/adr/006-routing-policy.md); adr-gate for `gateway/**`; SageMaker/KServe excluded from auto-select without recorded data
+- CI: Go tests + compose conformance + k6 + kill-backend fallback
+
 ### Phase 12 — Kubeflow Pipelines and Training Operator → KServe
 
 - `pipelines/kubeflow/pipelines/`: KFP SDK pipeline (train→eval→register) compiling to YAML

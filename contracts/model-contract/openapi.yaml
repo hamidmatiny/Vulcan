@@ -337,6 +337,27 @@ components:
           minimum: 1
           default: 256
 
+    RoutingConstraints:
+      type: object
+      additionalProperties: false
+      description: Optional gateway routing constraints (phase-13). Ignored by non-gateway backends.
+      properties:
+        max_latency_ms:
+          type: number
+          minimum: 0
+        max_cost_usd_per_1k_tokens:
+          type: number
+          minimum: 0
+        preferred_region:
+          type: string
+          minLength: 1
+        data_residency:
+          type: string
+          minLength: 1
+        preferred_backend:
+          type: string
+          minLength: 1
+
     InferRequestLlm:
       type: object
       additionalProperties: false
@@ -353,6 +374,8 @@ components:
           minLength: 1
         input:
           $ref: "#/components/schemas/LlmInput"
+        constraints:
+          $ref: "#/components/schemas/RoutingConstraints"
         metadata:
           type: object
           additionalProperties:
@@ -374,6 +397,8 @@ components:
           minLength: 1
         input:
           $ref: "#/components/schemas/VisionInput"
+        constraints:
+          $ref: "#/components/schemas/RoutingConstraints"
         metadata:
           type: object
           additionalProperties:
@@ -450,6 +475,32 @@ components:
         usage:
           $ref: "#/components/schemas/TokenUsage"
 
+    RoutingDecision:
+      type: object
+      additionalProperties: false
+      description: Legible gateway routing decision (phase-13 / ADR-006).
+      required: [selected_backend, policy, attempts]
+      properties:
+        selected_backend:
+          type: string
+        policy:
+          type: string
+        candidates:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        attempts:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        constraints_applied:
+          type: object
+          additionalProperties: true
+        fallback:
+          type: boolean
+
     InferResponseLlm:
       type: object
       additionalProperties: false
@@ -467,6 +518,8 @@ components:
         latency_ms:
           type: number
           minimum: 0
+        routing:
+          $ref: "#/components/schemas/RoutingDecision"
 
     InferResponseVision:
       type: object
@@ -485,6 +538,8 @@ components:
         latency_ms:
           type: number
           minimum: 0
+        routing:
+          $ref: "#/components/schemas/RoutingDecision"
 
     InferResponse:
       description: Discriminated union on `modality`.

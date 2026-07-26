@@ -55,6 +55,52 @@
         "usage": { "$ref": "#/$defs/TokenUsage" }
       }
     },
+    "RoutingAttempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "outcome"],
+      "properties": {
+        "backend": { "type": "string" },
+        "outcome": {
+          "type": "string",
+          "enum": ["selected", "unhealthy", "skipped", "error", "preferred"]
+        },
+        "detail": { "type": "string" }
+      }
+    },
+    "RoutingCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "rank", "score"],
+      "properties": {
+        "backend": { "type": "string" },
+        "rank": { "type": "integer", "minimum": 1 },
+        "score": { "type": "number" },
+        "latency_p95_ms": { "type": ["number", "null"] },
+        "cost_usd_per_1k_tokens": { "type": ["number", "null"] },
+        "data_source": { "type": "string" }
+      }
+    },
+    "RoutingDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Legible gateway routing decision (phase-13 / ADR-006). Optional for non-gateway backends.",
+      "required": ["selected_backend", "policy", "attempts"],
+      "properties": {
+        "selected_backend": { "type": "string" },
+        "policy": { "type": "string" },
+        "candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RoutingCandidate" }
+        },
+        "attempts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RoutingAttempt" }
+        },
+        "constraints_applied": { "type": "object" },
+        "fallback": { "type": "boolean" }
+      }
+    },
     "InferResponseLlm": {
       "type": "object",
       "additionalProperties": false,
@@ -64,7 +110,8 @@
         "modality": { "const": "llm" },
         "model_id": { "type": "string" },
         "output": { "$ref": "#/$defs/LlmOutput" },
-        "latency_ms": { "type": "number", "minimum": 0 }
+        "latency_ms": { "type": "number", "minimum": 0 },
+        "routing": { "$ref": "#/$defs/RoutingDecision" }
       }
     },
     "InferResponseVision": {
@@ -76,7 +123,8 @@
         "modality": { "const": "vision" },
         "model_id": { "type": "string" },
         "output": { "$ref": "#/$defs/VisionOutput" },
-        "latency_ms": { "type": "number", "minimum": 0 }
+        "latency_ms": { "type": "number", "minimum": 0 },
+        "routing": { "$ref": "#/$defs/RoutingDecision" }
       }
     }
   }

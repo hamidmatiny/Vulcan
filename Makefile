@@ -1,10 +1,10 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
-	test-checkpointing test-sagemaker test-bedrock lint reference-server \
-	benchmark-smoke benchmark-bentoml benchmark-ray-serve benchmark-triton \
-	benchmark-vllm benchmark-compare models-export models-verify triton-prepare \
-	wait-for-health validate-kserve validate-gpu-infra validate-autoscaling \
-	validate-kubeflow help
+	test-checkpointing test-sagemaker test-bedrock test-gateway lint \
+	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
+	benchmark-triton benchmark-vllm benchmark-compare models-export \
+	models-verify triton-prepare wait-for-health validate-kserve \
+	validate-gpu-infra validate-autoscaling validate-kubeflow help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -27,6 +27,7 @@ BENTOML_PORT ?= 9000
 RAY_SERVE_PORT ?= 9002
 TRITON_PORT ?= 9003
 VLLM_PORT ?= 9004
+GATEWAY_PORT ?= 9007
 # Poll loop mirrors CI health-wait (96 × 5s ≈ 8 min).
 HEALTH_WAIT_RETRIES ?= 96
 HEALTH_WAIT_SLEEP_SECS ?= 5
@@ -201,6 +202,17 @@ test-bedrock: $(BEDROCK_VENV)/bin/pytest ## Bedrock gateway adapter moto tests (
 	cd $(BEDROCK_DIR) && .venv/bin/pytest -q \
 		--cov=vulcan_bedrock --cov-report=term-missing \
 		--cov-fail-under=$(COVERAGE_MIN)
+
+test-gateway: ## Go unit/integration tests for routing gateway
+	cd gateway && go test ./...
+
+benchmark-gateway: ## Short CPU k6 against gateway (:9007) → gateway-cpu.json
+	@$(MAKE) wait-for-health WAIT_PORT=$(GATEWAY_PORT)
+	BASE_URL=http://$(REF_HOST):$(GATEWAY_PORT) \
+	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
+	VUS=2 DURATION=10s BACKEND_NAME=gateway \
+	RESULTS_OUT=benchmark/results/gateway-cpu.json \
+	bash benchmark/scripts/run_k6.sh
 
 benchmark-compare: ## Markdown table from benchmark/results/*.json
 	$(PYTHON) benchmark/scripts/compare_results.py --skip-schema 2>/dev/null || \

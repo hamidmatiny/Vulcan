@@ -19,6 +19,7 @@ env:
   VULCAN_RAY_SERVE_PORT: "9002"
   VULCAN_TRITON_PORT: "9003"
   VULCAN_VLLM_PORT: "9004"
+  VULCAN_GATEWAY_PORT: "9007"
 
 jobs:
   changes:
@@ -35,6 +36,7 @@ jobs:
       sagemaker_gate: ${{ steps.filter.outputs.sagemaker_gate }}
       bedrock_gate: ${{ steps.filter.outputs.bedrock_gate }}
       kubeflow_gate: ${{ steps.filter.outputs.kubeflow_gate }}
+      gateway_gate: ${{ steps.filter.outputs.gateway_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +64,12 @@ jobs:
             kubeflow_gate:
               - 'pipelines/kubeflow/**'
               - 'docs/runbooks/kubeflow-local-kind.md'
+            gateway_gate:
+              - 'gateway/**'
+              - 'docs/adr/006-routing-policy.md'
+              - 'benchmark/results/**'
+              - 'bedrock-gateway/pricing-reference.json'
+              - 'contracts/**'
             bentoml_gate:
               - 'serving/bentoml/**'
               - 'contracts/**'
@@ -118,6 +126,7 @@ jobs:
           test -f docs/adr/003-mig-partitioning-strategy.md
           test -f docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md
           test -f docs/adr/005-spot-gpu-strategy.md
+          test -f docs/adr/006-routing-policy.md
           test -f models/MANIFEST.md
           test -f models/pins.json
       - name: Port convention (9000–9099)
@@ -129,11 +138,13 @@ jobs:
           grep -q 'VULCAN_RAY_SERVE_PORT:-9002' docker-compose.yml
           grep -q 'VULCAN_TRITON_PORT:-9003' docker-compose.yml
           grep -q 'VULCAN_VLLM_PORT:-9004' docker-compose.yml
+          grep -q 'VULCAN_GATEWAY_PORT:-9007' docker-compose.yml
           grep -q '9002' .cursor/rules/vulcan-foundations.mdc
           grep -q '9003' .cursor/rules/vulcan-foundations.mdc
           grep -q '9004' .cursor/rules/vulcan-foundations.mdc
           grep -q '9005' .cursor/rules/vulcan-foundations.mdc
           grep -q '9006' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9007' .cursor/rules/vulcan-foundations.mdc
           grep -qE 'phase-N:|fix\(<component>\)' .cursor/rules/vulcan-foundations.mdc
           test -f serving/kserve/helm/Chart.yaml
           test -f docs/runbooks/kserve-local-kind.md
@@ -695,14 +706,89 @@ jobs:
       - name: Compile KFP + validate manifests (no cluster apply)
         run: make validate-kubeflow
 
+  gateway:
+    name: Gateway · conformance + k6 + fallback
+    needs: changes
+    if: needs.changes.outputs.gateway_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Go unit + fallback simulation tests
+        run: make test-gateway
+      - name: Export pinned reference models (CPU)
+        run: |
+          python -m pip install -U pip
+          python -m venv models/.venv
+          models/.venv/bin/pip install -r models/scripts/requirements.txt
+          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          cd models/scripts && ../.venv/bin/python export_llm.py
+          cd models/scripts && ../.venv/bin/python export_vision.py
+          cd models/scripts && ../.venv/bin/python verify_manifest.py
+      - name: Build + start bentoml, ray-serve, gateway (:9007)
+        run: |
+          docker compose build bentoml ray-serve gateway
+          docker compose up -d bentoml ray-serve gateway
+      - name: Wait for gateway /health
+        run: make wait-for-health WAIT_PORT=${{ env.VULCAN_GATEWAY_PORT }}
+      - name: Contract conformance suite (via gateway)
+        run: |
+          python -m venv serving/common/.venv
+          . serving/common/.venv/bin/activate
+          pip install -e "contracts/model-contract[dev]"
+          pip install -e "serving/common[dev]"
+          export VULCAN_BACKEND_URL="http://127.0.0.1:${VULCAN_GATEWAY_PORT}"
+          cd serving/common
+          pytest -q tests/conformance
+      - name: Short CPU k6 against gateway
+        run: |
+          docker run --rm --network host \
+            -v "$PWD:/work" -w /work \
+            -e BASE_URL="http://127.0.0.1:${VULCAN_GATEWAY_PORT}" \
+            -e MODEL_TYPE=llm \
+            -e MODEL_ID=reference-tiny-llm \
+            -e VUS=2 \
+            -e DURATION=10s \
+            -e BACKEND_NAME=gateway \
+            -e RESULTS_OUT=benchmark/results/gateway-cpu.json \
+            grafana/k6:0.54.0 run benchmark/k6/infer.js
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("benchmark/results/gateway-cpu.json")
+          data = json.loads(p.read_text())
+          assert data["schema_version"] == 1
+          assert data["backend"] == "gateway"
+          assert data["metrics"]["requests_total"] > 0
+          print("OK", p, data["metrics"])
+          PY
+      - name: Circuit-breaker fallback (stop selected backend)
+        run: |
+          chmod +x gateway/scripts/ci_fallback.sh
+          GATEWAY_URL="http://127.0.0.1:${VULCAN_GATEWAY_PORT}" bash gateway/scripts/ci_fallback.sh
+      - name: Upload gateway-cpu results
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-cpu-benchmark
+          path: benchmark/results/gateway-cpu.json
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
   adr-gate:
-    name: ADR gate (contracts / gpu-infra / autoscaling)
+    name: ADR gate (contracts / gpu-infra / autoscaling / gateway)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Fail if ADR missing for contracts/, gpu-infra/, or autoscaling/ changes
+      - name: Fail if ADR missing for contracts/, gpu-infra/, autoscaling/, or gateway/ changes
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
         run: |

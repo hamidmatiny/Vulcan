@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fail CI when contracts/, gpu-infra/, or autoscaling/ change without the required ADRs.
+# Fail CI when contracts/, gpu-infra/, autoscaling/, or gateway/ change without required ADRs.
 # Mapping is intentional and narrow — extend as new ADRs land.
 set -euo pipefail
 
@@ -12,6 +12,7 @@ ADR_GPU_COST="002-gpu-cost-safety-policy.md"
 ADR_MIG="003-mig-partitioning-strategy.md"
 ADR_KUEUE="004-multi-tenant-gpu-scheduling-with-kueue.md"
 ADR_SPOT="005-spot-gpu-strategy.md"
+ADR_ROUTING="006-routing-policy.md"
 
 CHANGED_FILES=""
 if [[ -n "${ADR_GATE_CHANGED_FILES:-}" ]]; then
@@ -24,8 +25,7 @@ elif [[ -n "${GITHUB_BASE_REF:-}" ]]; then
 fi
 
 if [[ -z "${CHANGED_FILES}" ]]; then
-  # First push / no base: treat tracked paths under gated trees as in-scope.
-  CHANGED_FILES="$(git ls-files contracts gpu-infra autoscaling || true)"
+  CHANGED_FILES="$(git ls-files contracts gpu-infra autoscaling gateway || true)"
 fi
 
 touched_contracts=0
@@ -33,6 +33,7 @@ touched_gpu_infra=0
 touched_mig_or_operator=0
 touched_kueue=0
 touched_autoscaling=0
+touched_gateway=0
 
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
@@ -52,6 +53,9 @@ while IFS= read -r path; do
   esac
   case "$path" in
     autoscaling|autoscaling/*) touched_autoscaling=1 ;;
+  esac
+  case "$path" in
+    gateway|gateway/*) touched_gateway=1 ;;
   esac
 done <<< "$CHANGED_FILES"
 
@@ -89,11 +93,15 @@ if [[ "$touched_autoscaling" -eq 1 ]]; then
   check_adr "autoscaling/" "$ADR_SPOT"
 fi
 
-if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 && "$touched_autoscaling" -eq 0 ]]; then
-  echo "ADR gate skip: no changes under contracts/, gpu-infra/, or autoscaling/"
+if [[ "$touched_gateway" -eq 1 ]]; then
+  check_adr "gateway/" "$ADR_ROUTING"
 fi
 
-if [[ "$touched_contracts" -eq 1 || "$touched_gpu_infra" -eq 1 || "$touched_autoscaling" -eq 1 ]]; then
+if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 && "$touched_autoscaling" -eq 0 && "$touched_gateway" -eq 0 ]]; then
+  echo "ADR gate skip: no changes under contracts/, gpu-infra/, autoscaling/, or gateway/"
+fi
+
+if [[ "$touched_contracts" -eq 1 || "$touched_gpu_infra" -eq 1 || "$touched_autoscaling" -eq 1 || "$touched_gateway" -eq 1 ]]; then
   if [[ ! -f "${ADR_DIR}/index.md" ]]; then
     echo "ADR gate FAIL: ${ADR_DIR}/index.md is missing"
     fail=1

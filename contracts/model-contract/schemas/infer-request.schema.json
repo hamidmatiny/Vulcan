@@ -88,6 +88,22 @@
         }
       }
     },
+    "RoutingConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional gateway routing constraints (phase-13). Ignored by non-gateway backends.",
+      "properties": {
+        "max_latency_ms": { "type": "number", "minimum": 0 },
+        "max_cost_usd_per_1k_tokens": { "type": "number", "minimum": 0 },
+        "preferred_region": { "type": "string", "minLength": 1 },
+        "data_residency": { "type": "string", "minLength": 1 },
+        "preferred_backend": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Soft preference; still subject to health and hard constraints."
+        }
+      }
+    },
     "InferRequestLlm": {
       "type": "object",
       "additionalProperties": false,
@@ -97,6 +113,7 @@
         "modality": { "const": "llm" },
         "model_id": { "type": "string", "minLength": 1 },
         "input": { "$ref": "#/$defs/LlmInput" },
+        "constraints": { "$ref": "#/$defs/RoutingConstraints" },
         "metadata": {
           "type": "object",
           "additionalProperties": { "type": "string" }
@@ -112,6 +129,7 @@
         "modality": { "const": "vision" },
         "model_id": { "type": "string", "minLength": 1 },
         "input": { "$ref": "#/$defs/VisionInput" },
+        "constraints": { "$ref": "#/$defs/RoutingConstraints" },
         "metadata": {
           "type": "object",
           "additionalProperties": { "type": "string" }
