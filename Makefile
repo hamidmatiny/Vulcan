@@ -3,7 +3,8 @@
 	test-checkpointing test-sagemaker test-bedrock lint reference-server \
 	benchmark-smoke benchmark-bentoml benchmark-ray-serve benchmark-triton \
 	benchmark-vllm benchmark-compare models-export models-verify triton-prepare \
-	wait-for-health validate-kserve validate-gpu-infra validate-autoscaling help
+	wait-for-health validate-kserve validate-gpu-infra validate-autoscaling \
+	validate-kubeflow help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -166,6 +167,9 @@ validate-gpu-infra: ## terraform validate/plan + GPU Operator/MIG helm+conftest 
 
 validate-autoscaling: ## Karpenter helm template + kubeconform + conftest (no apply)
 	bash autoscaling/karpenter/scripts/validate.sh
+
+validate-kubeflow: ## compile KFP + kubeconform/conftest PyTorchJob/ISVC (no apply)
+	bash pipelines/kubeflow/scripts/validate.sh
 
 $(CHECKPOINTING_VENV)/bin/pytest: $(CHECKPOINTING_DIR)/pyproject.toml
 	$(PYTHON) -m venv $(CHECKPOINTING_VENV)

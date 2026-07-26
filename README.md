@@ -20,6 +20,8 @@ Managed training/hosting comparison: [`pipelines/sagemaker/`](./pipelines/sagema
 
 Bedrock as a selectable LLM backend: [`bedrock-gateway/`](./bedrock-gateway/) (thin adapter; moto in CI; optional `:9006`).
 
+Training→serving loop: [`pipelines/kubeflow/`](./pipelines/kubeflow/) (KFP + Training Operator composing Kueue/Karpenter/checkpointing → KServe; [runbook](./docs/runbooks/kubeflow-local-kind.md)).
+
 ---
 
 ## Architecture (north star)

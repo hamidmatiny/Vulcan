@@ -1,0 +1,283 @@
+# PIPELINE DEFINITION
+# Name: vulcan-reference-tiny-llm
+# Description: Train reference-tiny-llm (PyTorchJob via Kueue+Karpenter+checkpointing), evaluate (SageMaker-aligned metrics), hand off InferenceService (KServe).
+# Inputs:
+#    total_steps: int [Default: 20.0]
+components:
+  comp-evaluate-reference-tiny-llm:
+    executorLabel: exec-evaluate-reference-tiny-llm
+    inputDefinitions:
+      artifacts:
+        model_dir:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        eval_dir:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-register-and-emit-inferenceservice:
+    executorLabel: exec-register-and-emit-inferenceservice
+    inputDefinitions:
+      artifacts:
+        eval_dir:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        model_dir:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        handoff_dir:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-train-reference-tiny-llm:
+    executorLabel: exec-train-reference-tiny-llm
+    inputDefinitions:
+      parameters:
+        total_steps:
+          parameterType: NUMBER_INTEGER
+    outputDefinitions:
+      artifacts:
+        model_dir:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate-reference-tiny-llm:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_reference_tiny_llm
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_reference_tiny_llm(\n    model_dir: Input[Artifact],\n\
+          \    eval_dir: Output[Artifact],\n) -> None:\n    \"\"\"Same eval_loss/perplexity\
+          \ approach as phase-10 SageMaker evaluate.\"\"\"\n    import json\n    import\
+          \ math\n    from pathlib import Path\n\n    metrics = json.loads(Path(model_dir.path,\
+          \ \"train_metrics.json\").read_text())\n    train_loss = float(metrics.get(\"\
+          train_loss\", 1.0))\n    corpus_tokens = 70\n    gap = min(0.5, 0.01 * corpus_tokens)\n\
+          \    eval_loss = train_loss + gap\n    perplexity = math.exp(min(eval_loss,\
+          \ 20.0))\n    evaluation = {\n        \"model_id\": \"reference-tiny-llm\"\
+          ,\n        \"eval_loss\": round(eval_loss, 6),\n        \"perplexity\":\
+          \ round(perplexity, 6),\n        \"backend\": \"kubeflow\",\n        \"\
+          comparison_note\": \"Aligned with pipelines/sagemaker evaluate_from_train_metrics\"\
+          ,\n    }\n    out = Path(eval_dir.path)\n    out.mkdir(parents=True, exist_ok=True)\n\
+          \    (out / \"evaluation.json\").write_text(json.dumps(evaluation, indent=2)\
+          \ + \"\\n\")\n    (out / \"evaluation_report.json\").write_text(\n     \
+          \   json.dumps(\n            {\n                \"metrics\": [\n       \
+          \             {\"Name\": \"eval_loss\", \"Value\": evaluation[\"eval_loss\"\
+          ]},\n                    {\"Name\": \"perplexity\", \"Value\": evaluation[\"\
+          perplexity\"]},\n                ],\n                \"model_id\": \"reference-tiny-llm\"\
+          ,\n            },\n            indent=2,\n        )\n        + \"\\n\"\n\
+          \    )\n\n"
+        image: python:3.12-slim
+    exec-register-and-emit-inferenceservice:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - register_and_emit_inferenceservice
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef register_and_emit_inferenceservice(\n    model_dir: Input[Artifact],\n\
+          \    eval_dir: Input[Artifact],\n    handoff_dir: Output[Artifact],\n) ->\
+          \ None:\n    \"\"\"Model registry metadata + InferenceService YAML (phase-6\
+          \ KServe shape).\"\"\"\n    import json\n    from pathlib import Path\n\
+          \    from textwrap import dedent\n\n    evaluation = json.loads(Path(eval_dir.path,\
+          \ \"evaluation.json\").read_text())\n    train_metrics = json.loads(Path(model_dir.path,\
+          \ \"train_metrics.json\").read_text())\n    out = Path(handoff_dir.path)\n\
+          \    out.mkdir(parents=True, exist_ok=True)\n    registry = {\n        \"\
+          registry\": \"vulcan-kubeflow-model-registry\",\n        \"model_id\": \"\
+          reference-tiny-llm\",\n        \"artifact_uri\": \"s3://vulcan-models/reference-tiny-llm/latest/\"\
+          ,\n        \"eval_loss\": evaluation[\"eval_loss\"],\n        \"perplexity\"\
+          : evaluation[\"perplexity\"],\n        \"weight_digest\": train_metrics.get(\"\
+          weight_digest\"),\n        \"serving\": {\n            \"platform\": \"\
+          kserve\",\n            \"backend\": \"vllm\",\n            \"manifest\"\
+          : \"inferenceservice.yaml\",\n        },\n        \"composed_from\": {\n\
+          \            \"kueue_queue\": \"lq-training\",\n            \"karpenter_nodepool\"\
+          : \"vulcan-gpu-mig-large\",\n            \"checkpointing\": \"autoscaling/checkpointing\"\
+          ,\n        },\n    }\n    (out / \"registry.json\").write_text(json.dumps(registry,\
+          \ indent=2) + \"\\n\")\n    isvc = dedent(\n        f\"\"\"\\\n        apiVersion:\
+          \ serving.kserve.io/v1beta1\n        kind: InferenceService\n        metadata:\n\
+          \          name: vulcan-vllm-finetuned\n          namespace: vulcan-serving\n\
+          \          labels:\n            app.kubernetes.io/part-of: vulcan\n    \
+          \        vulcan.dev/contract: model-contract-v1\n            vulcan.dev/backend:\
+          \ vllm\n            vulcan.dev/modalities: \"llm\"\n            vulcan.dev/model_id:\
+          \ reference-tiny-llm\n            vulcan.dev/trained-by: kubeflow-pipelines\n\
+          \          annotations:\n            serving.kserve.io/deploymentMode: RawDeployment\n\
+          \            vulcan.dev/eval_loss: \"{evaluation[\"eval_loss\"]}\"\n   \
+          \         vulcan.dev/perplexity: \"{evaluation[\"perplexity\"]}\"\n    \
+          \    spec:\n          predictor:\n            minReplicas: 1\n         \
+          \   maxReplicas: 3\n            containers:\n              - name: kserve-container\n\
+          \                image: vulcan-vllm:cpu\n                imagePullPolicy:\
+          \ IfNotPresent\n                ports:\n                  - containerPort:\
+          \ 9004\n                    protocol: TCP\n                env:\n      \
+          \            - name: PORT\n                    value: \"9004\"\n       \
+          \           - name: VULCAN_RUNTIME_MODE\n                    value: \"cpu\"\
+          \n                  - name: VLLM_URL\n                    value: \"http://127.0.0.1:8000\"\
+          \n                readinessProbe:\n                  httpGet:\n        \
+          \            path: /health\n                    port: 9004\n           \
+          \     resources:\n                  requests:\n                    cpu:\
+          \ 250m\n                    memory: 1Gi\n              - name: vllm-engine\n\
+          \                image: vulcan-vllm-engine:cpu\n                imagePullPolicy:\
+          \ IfNotPresent\n                env:\n                  - name: VULCAN_RUNTIME_MODE\n\
+          \                    value: \"cpu\"\n                  - name: VULCAN_MODEL_DIR\n\
+          \                    value: \"/models/llm/gpt2-small\"\n               \
+          \   - name: PORT\n                    value: \"8000\"\n                ports:\n\
+          \                  - containerPort: 8000\n                    protocol:\
+          \ TCP\n                readinessProbe:\n                  httpGet:\n   \
+          \                 path: /v1/models\n                    port: 8000\n   \
+          \             resources:\n                  requests:\n                \
+          \    cpu: 250m\n                    memory: 1Gi\n        \"\"\"\n    )\n\
+          \    (out / \"inferenceservice.yaml\").write_text(isvc)\n\n"
+        image: python:3.12-slim
+    exec-train-reference-tiny-llm:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_reference_tiny_llm
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.17.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_reference_tiny_llm(total_steps: int, model_dir: Output[Artifact])\
+          \ -> None:\n    \"\"\"Train step body (CI/local). Cluster runs PyTorchJob\
+          \ \u2014 see training-operator/.\"\"\"\n    import json\n    from pathlib\
+          \ import Path\n\n    weight_digest = 0\n    loss = 1.0\n    for step in\
+          \ range(1, int(total_steps) + 1):\n        loss = max(0.01, 1.0 / (1.0 +\
+          \ 0.1 * step))\n        weight_digest = (weight_digest * 31 + step) % 1_000_000_007\n\
+          \    metrics = {\n        \"model_id\": \"reference-tiny-llm\",\n      \
+          \  \"steps\": int(total_steps),\n        \"train_loss\": loss,\n       \
+          \ \"loss\": loss,\n        \"weight_digest\": weight_digest,\n        \"\
+          mode\": \"simulate\",\n        \"checkpointing\": \"autoscaling/checkpointing\"\
+          ,\n        \"kueue_queue\": \"lq-training\",\n        \"karpenter_nodepool\"\
+          : \"vulcan-gpu-mig-large\",\n    }\n    out = Path(model_dir.path)\n   \
+          \ out.mkdir(parents=True, exist_ok=True)\n    (out / \"train_metrics.json\"\
+          ).write_text(json.dumps(metrics, indent=2) + \"\\n\")\n    (out / \"model-meta.json\"\
+          ).write_text(\n        json.dumps({\"format\": \"vulcan-simulated-checkpoint\"\
+          , \"metrics\": metrics}, indent=2) + \"\\n\"\n    )\n    (out / \"PYTORCHJOB_REF.txt\"\
+          ).write_text(\n        \"Cluster train: pipelines/kubeflow/training-operator/manifests/\"\
+          \n        \"pytorchjob-reference-tiny-llm.yaml\\n\"\n    )\n\n"
+        image: python:3.12-slim
+pipelineInfo:
+  description: Train reference-tiny-llm (PyTorchJob via Kueue+Karpenter+checkpointing),
+    evaluate (SageMaker-aligned metrics), hand off InferenceService (KServe).
+  name: vulcan-reference-tiny-llm
+root:
+  dag:
+    tasks:
+      evaluate-reference-tiny-llm:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate-reference-tiny-llm
+        dependentTasks:
+        - train-reference-tiny-llm
+        inputs:
+          artifacts:
+            model_dir:
+              taskOutputArtifact:
+                outputArtifactKey: model_dir
+                producerTask: train-reference-tiny-llm
+        taskInfo:
+          name: evaluate-reference-tiny-llm
+      register-and-emit-inferenceservice:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-register-and-emit-inferenceservice
+        dependentTasks:
+        - evaluate-reference-tiny-llm
+        - train-reference-tiny-llm
+        inputs:
+          artifacts:
+            eval_dir:
+              taskOutputArtifact:
+                outputArtifactKey: eval_dir
+                producerTask: evaluate-reference-tiny-llm
+            model_dir:
+              taskOutputArtifact:
+                outputArtifactKey: model_dir
+                producerTask: train-reference-tiny-llm
+        taskInfo:
+          name: register-and-emit-inferenceservice
+      train-reference-tiny-llm:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-reference-tiny-llm
+        inputs:
+          parameters:
+            total_steps:
+              componentInputParameter: total_steps
+        taskInfo:
+          name: train-reference-tiny-llm
+  inputDefinitions:
+    parameters:
+      total_steps:
+        defaultValue: 20.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.17.0

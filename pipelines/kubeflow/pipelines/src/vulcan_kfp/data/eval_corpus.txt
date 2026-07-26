@@ -1,0 +1,7 @@
+Vulcan serves reference-tiny-llm with a unified model contract.
+GPT-2 small is the phase-1 pin for cross-backend comparison.
+Fine-tuning must report eval_loss and perplexity on a held-out set.
+SageMaker Pipelines train, evaluate, and register the same model_id.
+Kubeflow Pipelines reuse the same metrics for cross-platform comparison.
+Spot training and Kueue preemption both require checkpoint-resume.
+Inference latency is measured with the shared k6 harness elsewhere.

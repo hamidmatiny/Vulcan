@@ -4,6 +4,13 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 12 — Kubeflow Pipelines and Training Operator → KServe
+
+- `pipelines/kubeflow/pipelines/`: KFP SDK pipeline (train→eval→register) compiling to YAML
+- `pipelines/kubeflow/training-operator/`: PyTorchJob on Kueue `lq-training` + Karpenter `mig-large` + phase-9 checkpointing
+- Handoff InferenceService matching phase-6 KServe format; eval metrics aligned with phase-10 SageMaker
+- CI validate-only; runbook [`docs/runbooks/kubeflow-local-kind.md`](./docs/runbooks/kubeflow-local-kind.md)
+
 ### Phase 11 — Bedrock-aware gateway adapter
 
 - `bedrock-gateway/`: thin LLM-branch contract shim over Bedrock `InvokeModel` (vLLM-shaped; vision unsupported)

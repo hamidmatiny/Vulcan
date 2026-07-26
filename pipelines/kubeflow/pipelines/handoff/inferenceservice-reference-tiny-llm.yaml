@@ -1,0 +1,87 @@
+# Static handoff template matching phase-6 serving/kserve helm InferenceService shape
+# (vLLM LLM predictor). The KFP register step emits a filled copy with eval metrics.
+# Apply out-of-band only (ADR-002).
+
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: vulcan-vllm-finetuned
+  namespace: vulcan-serving
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/contract: model-contract-v1
+    vulcan.dev/backend: vllm
+    vulcan.dev/modalities: "llm"
+    vulcan.dev/model_id: reference-tiny-llm
+    vulcan.dev/trained-by: kubeflow-pipelines
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 3
+    containers:
+      - name: kserve-container
+        image: vulcan-vllm:cpu
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 9004
+            protocol: TCP
+        env:
+          - name: PORT
+            value: "9004"
+          - name: HOST
+            value: "0.0.0.0"
+          - name: VULCAN_RUNTIME_MODE
+            value: "cpu"
+          - name: VLLM_URL
+            value: "http://127.0.0.1:8000"
+          - name: VLLM_WAIT_SECONDS
+            value: "300"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9004
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9004
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+      - name: vllm-engine
+        image: vulcan-vllm-engine:cpu
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: VULCAN_RUNTIME_MODE
+            value: "cpu"
+          - name: VULCAN_MODEL_DIR
+            value: "/models/llm/gpt2-small"
+          - name: PORT
+            value: "8000"
+          - name: HOST
+            value: "0.0.0.0"
+        ports:
+          - containerPort: 8000
+            protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /v1/models
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi

@@ -34,6 +34,7 @@ jobs:
       autoscaling_gate: ${{ steps.filter.outputs.autoscaling_gate }}
       sagemaker_gate: ${{ steps.filter.outputs.sagemaker_gate }}
       bedrock_gate: ${{ steps.filter.outputs.bedrock_gate }}
+      kubeflow_gate: ${{ steps.filter.outputs.kubeflow_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +59,9 @@ jobs:
               - 'docs/runbooks/sagemaker-manual-run.md'
             bedrock_gate:
               - 'bedrock-gateway/**'
+            kubeflow_gate:
+              - 'pipelines/kubeflow/**'
+              - 'docs/runbooks/kubeflow-local-kind.md'
             bentoml_gate:
               - 'serving/bentoml/**'
               - 'contracts/**'
@@ -659,6 +663,37 @@ jobs:
           AWS_SESSION_TOKEN: testing
           AWS_DEFAULT_REGION: us-east-1
         run: make test-bedrock
+
+  kubeflow:
+    name: Kubeflow · KFP compile + PyTorchJob/ISVC validate
+    needs: changes
+    if: needs.changes.outputs.kubeflow_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install kubeconform
+        env:
+          KUBECONFORM_VERSION: "0.6.7"
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install /tmp/kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+      - name: Install conftest
+        env:
+          CONFTEST_VERSION: "0.55.0"
+        run: |
+          curl -fsSL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install /tmp/conftest /usr/local/bin/conftest
+          conftest --version
+      - name: Compile KFP + validate manifests (no cluster apply)
+        run: make validate-kubeflow
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra / autoscaling)

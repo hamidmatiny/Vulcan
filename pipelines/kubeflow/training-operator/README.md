@@ -1,23 +1,23 @@
-# training-operator
-
-> Phase 0 stub — implementation lands in a later phase.
+# Kubeflow Training Operator — PyTorchJob (phase 12)
 
 **Path:** `pipelines/kubeflow/training-operator/`
 
-## Purpose
+## Composition callout (phases 7–9)
 
-Training Operator job templates (PyTorchJob / etc.).
+This manifest is the **actual cluster training step** for `reference-tiny-llm`. It deliberately wires into existing Vulcan GPU control planes instead of defining a parallel queue or node pool:
 
-## Status
+1. **Kueue (phase 8)** — `kueue.x-k8s.io/queue-name: lq-training` and priority `vulcan-training` (see `gpu-infra/kueue/`).
+2. **Karpenter (phase 9)** — `nodeSelector` for `vulcan.dev/gpu-pool=mig-large` / `vulcan.dev/mig=training-large-batch` (NodePool `vulcan-gpu-mig-large`, spot-first per ADR-005).
+3. **Checkpoint-resume (phase 9)** — container command `vulcan-checkpoint-finetune` from `autoscaling/checkpointing/`, PVC at `/checkpoints`, `terminationGracePeriodSeconds: 120` for spot SIGTERM.
 
-Scaffolded in **phase-0**. No runtime yet.
+MIG resource request `nvidia.com/mig-3g.40gb` matches ADR-003 `training-large-batch` / Kueue flavor `mig-large`.
 
-## How to run
+## Validate
 
-Not applicable until this component is implemented.
+```bash
+make validate-kubeflow
+```
 
-## Contract / policy notes
+## Apply
 
-- Serving backends must implement [`contracts/model-contract`](../../../contracts/model-contract/) exactly ([ADR-001](../../../docs/adr/001-unified-model-serving-contract.md)).
-- CI never provisions or runs against real GPU hardware ([ADR-002](../../../docs/adr/002-gpu-cost-safety-policy.md)).
-- Coverage gate for gated packages: **≥ 65%** (see root `CONTRIBUTING.md` and CI).
+Manual only — [runbook](../../../docs/runbooks/kubeflow-local-kind.md). Never from GitHub Actions.

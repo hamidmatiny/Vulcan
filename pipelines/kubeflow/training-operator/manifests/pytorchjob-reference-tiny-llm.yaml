@@ -1,0 +1,101 @@
+# PyTorchJob for reference-tiny-llm fine-tune.
+# Composes (does not reinvent):
+#   - phase-8 Kueue LocalQueue lq-training (+ WorkloadPriorityClass vulcan-training)
+#   - phase-9 Karpenter NodePool vulcan-gpu-mig-large (spot-first, MIG large)
+#   - phase-9 autoscaling/checkpointing (vulcan-checkpoint-finetune on SIGTERM)
+#
+# Apply out-of-band only (ADR-002). CI validates; never applies.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-training
+  labels:
+    vulcan.dev/team: training
+    app.kubernetes.io/part-of: vulcan
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vulcan-finetune-checkpoints
+  namespace: team-training
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: checkpointing
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: vulcan-finetune-reference-tiny-llm
+  namespace: team-training
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: training-operator
+    vulcan.dev/model_id: reference-tiny-llm
+    kueue.x-k8s.io/queue-name: lq-training
+  annotations:
+    kueue.x-k8s.io/priority-class: vulcan-training
+    vulcan.dev/composed-from: "phase-8-kueue,phase-9-karpenter,phase-9-checkpointing"
+spec:
+  pytorchReplicaSpecs:
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/part-of: vulcan
+            vulcan.dev/model_id: reference-tiny-llm
+            kueue.x-k8s.io/queue-name: lq-training
+        spec:
+          # phase-9 Karpenter NodePool vulcan-gpu-mig-large labels (ADR-003/005)
+          nodeSelector:
+            vulcan.dev/gpu: "true"
+            vulcan.dev/gpu-pool: mig-large
+            vulcan.dev/mig: training-large-batch
+          tolerations:
+            - key: nvidia.com/gpu
+              operator: Exists
+              effect: NoSchedule
+          terminationGracePeriodSeconds: 120
+          containers:
+            - name: pytorch
+              image: vulcan/training-checkpoint:phase-12
+              imagePullPolicy: IfNotPresent
+              command:
+                - vulcan-checkpoint-finetune
+              args:
+                - --checkpoint-dir
+                - /checkpoints
+                - --total-steps
+                - "100"
+                - --step-seconds
+                - "1.0"
+              env:
+                - name: VULCAN_MODEL_ID
+                  value: reference-tiny-llm
+                - name: VULCAN_KUEUE_QUEUE
+                  value: lq-training
+                - name: VULCAN_KARPENTER_NODEPOOL
+                  value: vulcan-gpu-mig-large
+              volumeMounts:
+                - name: checkpoints
+                  mountPath: /checkpoints
+              resources:
+                requests:
+                  cpu: "4"
+                  memory: 32Gi
+                  nvidia.com/mig-3g.40gb: "1"
+                limits:
+                  cpu: "8"
+                  memory: 64Gi
+                  nvidia.com/mig-3g.40gb: "1"
+          volumes:
+            - name: checkpoints
+              persistentVolumeClaim:
+                claimName: vulcan-finetune-checkpoints
