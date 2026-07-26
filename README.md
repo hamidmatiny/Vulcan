@@ -40,15 +40,17 @@ Full design: [ARCHITECTURE.md](./ARCHITECTURE.md)
 ```bash
 git clone https://github.com/hamidmatiny/Vulcan.git && cd Vulcan
 cp .env.example .env
-make up                 # CPU-only compose placeholders
-make test               # contracts + serving/common conformance + benchmark unit tests
-make lint
-make reference-server   # trivial contract server (separate terminal)
-make benchmark-smoke    # k6 → benchmark/results/reference-llm.json
+make models-export      # once — pin-identical GPT-2 + ResNet-18 weights
+make up                 # BentoML on :9000 (Vulcan ports 9000–9099)
+make test
+curl -s localhost:9000/health
+VULCAN_BACKEND_URL=http://127.0.0.1:9000 make test-serving-common
+make benchmark-bentoml  # short CPU k6 → benchmark/results/bentoml-cpu.json
 make down
 ```
 
-Pinned reference models: [`models/MANIFEST.md`](./models/MANIFEST.md) · Conformance: [`serving/common/`](./serving/common/) · Load harness: [`benchmark/`](./benchmark/)
+**Ports:** Vulcan owns **9000–9099** on the host (avoids Argus and other stacks).  
+Pinned models: [`models/MANIFEST.md`](./models/MANIFEST.md) · BentoML: [`serving/bentoml/`](./serving/bentoml/) · Conformance: [`serving/common/`](./serving/common/)
 
 > **GPU policy:** CI and `make up` never provision real GPUs. Manual GPU benchmarks live in [`docs/benchmarks/`](./docs/benchmarks/) ([ADR-002](./docs/adr/002-gpu-cost-safety-policy.md)).
 
@@ -81,4 +83,4 @@ docs/{adr,benchmarks}/  tests/e2e/
 - **≥ 65% coverage** on gated packages
 - **Cursor rules** in [`.cursor/rules/`](./.cursor/rules/) enforce contract-first + CPU-fallback automatically
 
-Phase 1 status: reference model pins, conformance suite + client SDK, k6 benchmark harness. Real backends land in later phases.
+Phase 2 status: BentoML CPU adapter on `:9000` serving both reference models behind the contract.

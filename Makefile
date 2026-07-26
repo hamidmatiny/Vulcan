@@ -1,6 +1,6 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
-	lint reference-server benchmark-smoke benchmark-compare \
+	lint reference-server benchmark-smoke benchmark-bentoml benchmark-compare \
 	models-export models-verify help
 
 COMPOSE ?= docker compose
@@ -11,14 +11,16 @@ SERVING_COMMON_DIR := serving/common
 SERVING_COMMON_VENV := $(SERVING_COMMON_DIR)/.venv
 MODELS_VENV := models/.venv
 COVERAGE_MIN ?= 65
+# Vulcan host ports: 9000–9099
 REF_HOST ?= 127.0.0.1
-REF_PORT ?= 8080
+REF_PORT ?= 9001
+BENTOML_PORT ?= 9000
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?##"}; {printf "  %-22s %s\n", $$1, $$2}'
 
-up: ## Start local stack (CPU-only; ADR-002)
-	$(COMPOSE) up -d
+up: ## Start local stack (bentoml on :9000; CPU-only)
+	$(COMPOSE) up -d --build bentoml
 
 down: ## Stop local stack
 	$(COMPOSE) down
@@ -44,10 +46,15 @@ test-contracts: $(CONTRACTS_VENV)/bin/pytest ## Contract schema tests (≥65% co
 		--cov-fail-under=$(COVERAGE_MIN)
 
 test-serving-common: $(SERVING_COMMON_VENV)/bin/pytest ## Conformance + client tests (≥65%)
-	cd $(SERVING_COMMON_DIR) && .venv/bin/pytest -q \
-		--cov=vulcan_serving_common \
-		--cov-report=term-missing \
-		--cov-fail-under=$(COVERAGE_MIN)
+	@if [ -n "$(VULCAN_BACKEND_URL)" ]; then \
+		echo "==> conformance against $$VULCAN_BACKEND_URL (no local coverage gate)"; \
+		cd $(SERVING_COMMON_DIR) && .venv/bin/pytest -q tests/conformance; \
+	else \
+		cd $(SERVING_COMMON_DIR) && .venv/bin/pytest -q \
+			--cov=vulcan_serving_common \
+			--cov-report=term-missing \
+			--cov-fail-under=$(COVERAGE_MIN); \
+	fi
 
 test-benchmark: $(SERVING_COMMON_VENV)/bin/pytest ## Benchmark compare-script unit tests
 	PYTHONPATH=benchmark/scripts $(SERVING_COMMON_VENV)/bin/python -m pytest -q benchmark/tests
@@ -65,15 +72,21 @@ lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest ## Fan-out 
 	@test -f docs/adr/002-gpu-cost-safety-policy.md
 	@echo "==> lint: OK"
 
-reference-server: $(SERVING_COMMON_VENV)/bin/pytest ## Run trivial contract reference server
+reference-server: $(SERVING_COMMON_VENV)/bin/pytest ## Trivial reference server (:9001)
 	$(SERVING_COMMON_VENV)/bin/vulcan-reference-server --host $(REF_HOST) --port $(REF_PORT)
 
-benchmark-smoke: ## k6 smoke against reference server (CPU-only)
-	@echo "==> Ensure reference server on $(REF_HOST):$(REF_PORT) (make reference-server)"
+benchmark-smoke: ## k6 smoke against reference server (:9001)
 	BASE_URL=http://$(REF_HOST):$(REF_PORT) \
 	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
 	VUS=2 DURATION=8s BACKEND_NAME=reference \
 	RESULTS_OUT=benchmark/results/reference-llm.json \
+	bash benchmark/scripts/run_k6.sh
+
+benchmark-bentoml: ## Short CPU k6 against bentoml (:9000) → bentoml-cpu.json
+	BASE_URL=http://$(REF_HOST):$(BENTOML_PORT) \
+	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
+	VUS=2 DURATION=10s BACKEND_NAME=bentoml \
+	RESULTS_OUT=benchmark/results/bentoml-cpu.json \
 	bash benchmark/scripts/run_k6.sh
 
 benchmark-compare: ## Markdown table from benchmark/results/*.json

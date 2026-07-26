@@ -2,11 +2,11 @@
 
 Contract-compliant model-serving backends. Each subdirectory implements [`contracts/model-contract`](../contracts/model-contract/) exactly and MUST provide a **CPU-only dev mode** ([ADR-002](../docs/adr/002-gpu-cost-safety-policy.md)).
 
-| Backend | Status |
-|---------|--------|
-| [`common/`](./common/) | Shared helpers (phase 0 stub) |
-| [`bentoml/`](./bentoml/) | Phase 0 stub |
-| [`ray-serve/`](./ray-serve/) | Phase 0 stub |
-| [`triton/`](./triton/) | Phase 0 stub |
-| [`vllm/`](./vllm/) | Phase 0 stub |
-| [`kserve/`](./kserve/) | Phase 0 stub |
+| Backend | Status | Host port |
+|---------|--------|-----------|
+| [`common/`](./common/) | Client SDK, conformance, reference server | **9001** |
+| [`bentoml/`](./bentoml/) | Phase 2 — both reference models, contract-complete | **9000** |
+| [`ray-serve/`](./ray-serve/) | Stub | TBD in 9000–9099 |
+| [`triton/`](./triton/) | Stub | TBD in 9000–9099 |
+| [`vllm/`](./vllm/) | Stub | TBD in 9000–9099 |
+| [`kserve/`](./kserve/) | Stub | TBD in 9000–9099 |

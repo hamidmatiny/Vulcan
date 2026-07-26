@@ -1,0 +1,15 @@
+# Trivial contract reference server (phase-1) — host port 9001.
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=9001
+
+WORKDIR /app
+COPY contracts/model-contract /app/contracts/model-contract
+COPY serving/common /app/serving/common
+RUN pip install --no-cache-dir -e /app/contracts/model-contract \
+    && pip install --no-cache-dir -e /app/serving/common
+
+EXPOSE 9001
+CMD ["vulcan-reference-server", "--host", "0.0.0.0", "--port", "9001"]

@@ -1,0 +1,25 @@
+.git
+.github
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/node_modules
+**/*.egg-info
+htmlcov
+.coverage
+docs
+infra
+gpu-infra
+autoscaling
+pipelines
+console
+observability
+bedrock-gateway
+gateway
+benchmark/results/*.json
+!benchmark/results/.gitkeep
+# Keep models/artifacts for bentoml image bake (weights are required at build).
+models/.venv
+models/artifacts/**/.cache

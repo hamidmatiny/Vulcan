@@ -1,0 +1,32 @@
+# GPU Bento build — DOCUMENTATION / MANUAL ONLY (ADR-002).
+# Never invoked by CI. Example local/out-of-band build:
+#
+#   # On a machine with NVIDIA Container Toolkit + CUDA base available:
+#   bentoml build -f serving/bentoml/bentofile.gpu.yaml
+#   bentoml containerize vulcan-bentoml-gpu:latest --opt cuda=12.1
+#
+# Prefer documenting the CUDA image tag your cluster uses; do not add this
+# file to GitHub Actions workflows.
+
+service: "service:VulcanService"
+description: "Vulcan BentoML adapter (GPU packaging template)"
+include:
+  - "*.py"
+  - "resource-requirements.json"
+  - "requirements.txt"
+python:
+  requirements_txt: "./requirements.txt"
+  lock_packages: false
+docker:
+  cuda_version: "12.1.0"
+  system_packages:
+    - curl
+envs:
+  - name: VULCAN_RUNTIME_MODE
+    value: gpu
+  - name: VULCAN_MODELS_DIR
+    value: /models
+labels:
+  owner: vulcan
+  vulcan.gpu: "true"
+  vulcan.ci: "forbidden"

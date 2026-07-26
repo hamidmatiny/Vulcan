@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "backend": "bentoml",
+  "modality": "llm",
+  "model_id": "reference-tiny-llm",
+  "target_url": "http://127.0.0.1:9000",
+  "started_at": "2026-07-26T03:54:13.254Z",
+  "duration_seconds": 10.188,
+  "vus": 2,
+  "runtime_mode": "cpu",
+  "notes": "Short CPU k6 regression against serving/bentoml (phase-2). Not a perf claim; GPU runs are manual \u2014 see docs/benchmarks/.",
+  "metrics": {
+    "requests_total": 77,
+    "error_rate": 0,
+    "throughput_rps": 7.558,
+    "latency_ms": {
+      "p50": 250.759,
+      "p95": 284.859,
+      "p99": 291.92,
+      "avg": 253.341,
+      "max": 293.565
+    }
+  }
+}

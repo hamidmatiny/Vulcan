@@ -240,7 +240,8 @@ def create_server(host: str, port: int) -> ThreadingHTTPServer:
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Vulcan trivial contract reference server")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8080)
+    # Vulcan host port range: 9000–9099 (9001 = reference server).
+    parser.add_argument("--port", type=int, default=9001)
     args = parser.parse_args(argv)
     server = create_server(args.host, args.port)
     print(f"vulcan-reference-server listening on http://{args.host}:{args.port}", flush=True)

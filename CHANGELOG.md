@@ -4,6 +4,12 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 2 — BentoML adapter
+
+- Host port convention **9000–9099** (documented in `.cursor/rules` + `docker-compose.yml`)
+- `serving/bentoml/`: contract-compliant BentoML service for both phase-1 reference models (CPU Dockerfile; GPU Bento documented, not CI)
+- Compose `bentoml` on `:9000`; CI conformance + short CPU k6 → `benchmark/results/bentoml-cpu.json`
+
 ### Phase 1 — Reference models and benchmark harness
 
 - `models/`: fetch/export scripts for GPT-2 small (safetensors) + ResNet-18 (ONNX); [`MANIFEST.md`](./models/MANIFEST.md) pins revisions and sha256 digests

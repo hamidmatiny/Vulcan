@@ -48,6 +48,17 @@ Prefer small PRs mapped to a single phase or component.
 - Docs and ADRs in `docs/`; do not invent parallel top-level doc trees.
 - Every component ships a `README.md`.
 
+## Port allocation (host)
+
+- **Vulcan owns host ports `9000–9099`.** Do not bind Vulcan services outside this range.
+- Rationale: sibling stacks (e.g. Argus on 3000/808x/809x) often share a laptop; colliding ports break local compose.
+- Reserved map (extend in compose comments as services land):
+  - `9000` — `serving/bentoml`
+  - `9001` — `serving/common` reference server
+  - `9002–9098` — future backends / gateway / obs
+  - `9099` — optional contract-stub / docs static
+- Reference server, stubs, and compose `ports:` MUST use this range. Never default to `8080`/`8090`/etc.
+
 ## Secrets & local stack
 
 - Never commit secrets; use `.env.example`.

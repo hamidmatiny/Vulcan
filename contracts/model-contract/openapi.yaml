@@ -17,8 +17,8 @@ info:
     name: Vulcan maintainers
 
 servers:
-  - url: http://localhost:8080
-    description: Local CPU-dev default (compose / make up)
+  - url: http://localhost:9000
+    description: Local CPU-dev default — serving/bentoml (Vulcan ports 9000–9099)
 
 tags:
   - name: health

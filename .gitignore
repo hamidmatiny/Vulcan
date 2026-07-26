@@ -65,4 +65,5 @@ models/**/*.safetensors
 models/**/*.gguf
 models/.venv/
 models/artifacts/**/.cache/
+serving/bentoml/.venv/
 !models/**/.gitkeep
