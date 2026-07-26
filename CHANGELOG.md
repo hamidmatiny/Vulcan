@@ -4,6 +4,12 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 6 — KServe adapter
+
+- `serving/kserve/helm/`: InferenceServices wrapping Triton + vLLM contract images (CPU-dev); canary `trafficPercent` example
+- CI: path-filtered `helm template` + kubeconform + conftest (no compose, no apply — ADR-002)
+- Runbook: [`docs/runbooks/kserve-local-kind.md`](./docs/runbooks/kserve-local-kind.md)
+
 ### Phase 5 — vLLM adapter
 
 - Host port **9004** for `serving/vllm` (LLM-only; vision → `unsupported_modality`)

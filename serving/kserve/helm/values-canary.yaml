@@ -1,0 +1,13 @@
+# Example canary rollout: 10% traffic to *-canary image tags (new model revision).
+# Usage:
+#   helm template vulcan-kserve ./serving/kserve/helm -f values.yaml -f values-canary.yaml
+
+triton:
+  canary:
+    enabled: true
+    trafficPercent: 10
+
+vllm:
+  canary:
+    enabled: true
+    trafficPercent: 10

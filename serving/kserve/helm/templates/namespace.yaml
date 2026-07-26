@@ -1,0 +1,9 @@
+{{- if .Values.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    {{- include "vulcan-kserve.labels" . | nindent 4 }}
+    vulcan.dev/role: serving
+{{- end }}

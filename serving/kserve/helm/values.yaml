@@ -1,0 +1,69 @@
+# Default CPU-dev values (ADR-002). No GPU requests.
+# Images are the phase-4 / phase-5 compose images (load into kind via kind load).
+
+nameOverride: ""
+fullnameOverride: ""
+
+namespace: vulcan-serving
+createNamespace: true
+
+commonLabels:
+  app.kubernetes.io/part-of: vulcan
+  vulcan.dev/contract: model-contract-v1
+
+# RawDeployment works on kind without Knative. Serverless needs Knative Serving.
+deploymentMode: RawDeployment
+
+# Scale-to-zero / HPA knobs (RawDeployment uses K8s HPA annotations when set).
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 3
+  targetUtilizationPercentage: 70
+
+triton:
+  enabled: true
+  name: vulcan-triton
+  # Contract shim (phase-4) — north-bound Vulcan HTTP on this port.
+  shim:
+    image: vulcan-triton:cpu
+    imageCanary: vulcan-triton:cpu-canary
+    port: 9003
+  engine:
+    image: vulcan-triton-engine:cpu
+    imageCanary: vulcan-triton-engine:cpu-canary
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  # Canary: trafficPercent to the new revision (canary images). 0 = disabled.
+  canary:
+    enabled: false
+    trafficPercent: 10
+
+vllm:
+  enabled: true
+  name: vulcan-vllm
+  # LLM-only contract shim (phase-5).
+  shim:
+    image: vulcan-vllm:cpu
+    imageCanary: vulcan-vllm:cpu-canary
+    port: 9004
+  engine:
+    image: vulcan-vllm-engine:cpu
+    imageCanary: vulcan-vllm-engine:cpu-canary
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  canary:
+    enabled: false
+    trafficPercent: 10
+
+# Optional: forbid GPU in rendered CPU chart (enforced also by conftest).
+forbidGpuResources: true

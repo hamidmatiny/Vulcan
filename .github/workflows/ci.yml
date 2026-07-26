@@ -29,6 +29,7 @@ jobs:
       ray_serve_gate: ${{ steps.filter.outputs.ray_serve_gate }}
       triton_gate: ${{ steps.filter.outputs.triton_gate }}
       vllm_gate: ${{ steps.filter.outputs.vllm_gate }}
+      kserve_gate: ${{ steps.filter.outputs.kserve_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -65,6 +66,9 @@ jobs:
               - 'serving/common/tests/conftest.py'
               - 'models/pins.json'
               - 'models/MANIFEST.md'
+            kserve_gate:
+              - 'serving/kserve/**'
+              - 'docs/runbooks/kserve-local-kind.md'
 
   lint:
     name: Lint
@@ -104,7 +108,10 @@ jobs:
           grep -q '9002' .cursor/rules/vulcan-foundations.mdc
           grep -q '9003' .cursor/rules/vulcan-foundations.mdc
           grep -q '9004' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9005' .cursor/rules/vulcan-foundations.mdc
           grep -qE 'phase-N:|fix\(<component>\)' .cursor/rules/vulcan-foundations.mdc
+          test -f serving/kserve/helm/Chart.yaml
+          test -f docs/runbooks/kserve-local-kind.md
 
   unit-tests:
     name: Unit tests · contracts
@@ -484,6 +491,37 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  kserve:
+    name: KServe · helm template + kubeconform + conftest
+    needs: changes
+    if: needs.changes.outputs.kserve_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+      - name: Install kubeconform
+        env:
+          KUBECONFORM_VERSION: "0.6.7"
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install /tmp/kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+      - name: Install conftest
+        env:
+          CONFTEST_VERSION: "0.55.0"
+        run: |
+          curl -fsSL "https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}/conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo install /tmp/conftest /usr/local/bin/conftest
+          conftest --version
+      - name: Validate KServe chart (no cluster apply)
+        run: make validate-kserve
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra)

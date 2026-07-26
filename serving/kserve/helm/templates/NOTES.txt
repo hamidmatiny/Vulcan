@@ -1,0 +1,22 @@
+Vulcan KServe chart rendered.
+
+Namespace: {{ .Values.namespace }}
+Deployment mode: {{ .Values.deploymentMode }}
+
+InferenceServices:
+{{- if .Values.triton.enabled }}
+  - {{ .Values.triton.name }} (Triton contract shim :{{ .Values.triton.shim.port }}; modalities=llm,vision)
+  {{- if .Values.triton.canary.enabled }}
+    canaryTrafficPercent={{ .Values.triton.canary.trafficPercent }}
+  {{- end }}
+{{- end }}
+{{- if .Values.vllm.enabled }}
+  - {{ .Values.vllm.name }} (vLLM contract shim :{{ .Values.vllm.shim.port }}; modalities=llm only)
+  {{- if .Values.vllm.canary.enabled }}
+    canaryTrafficPercent={{ .Values.vllm.canary.trafficPercent }}
+  {{- end }}
+{{- end }}
+
+CI validates with: make validate-kserve
+Local cluster walkthrough: docs/runbooks/kserve-local-kind.md
+Never helm upgrade / kubectl apply from CI (ADR-002).

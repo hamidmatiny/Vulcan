@@ -2,7 +2,7 @@
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	lint reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export models-verify \
-	triton-prepare wait-for-health help
+	triton-prepare wait-for-health validate-kserve help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -150,6 +150,9 @@ triton-prepare: ## Populate Triton model_repository with ONNX (needs models-expo
 	@test -d $(MODELS_VENV) || $(MAKE) models-export
 	$(MODELS_VENV)/bin/pip install -q -r serving/triton/scripts/requirements-prepare.txt
 	$(MODELS_VENV)/bin/python serving/triton/scripts/prepare_model_repo.py
+
+validate-kserve: ## helm template + kubeconform + conftest (no cluster apply)
+	bash serving/kserve/scripts/validate.sh
 
 benchmark-compare: ## Markdown table from benchmark/results/*.json
 	$(PYTHON) benchmark/scripts/compare_results.py --skip-schema 2>/dev/null || \

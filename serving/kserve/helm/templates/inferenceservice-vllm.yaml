@@ -1,0 +1,83 @@
+{{- if .Values.vllm.enabled }}
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: {{ .Values.vllm.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "vulcan-kserve.labels" . | nindent 4 }}
+    vulcan.dev/backend: vllm
+    vulcan.dev/modalities: "llm"
+  annotations:
+    {{- include "vulcan-kserve.annotations" . | nindent 4 }}
+    {{- if .Values.vllm.canary.enabled }}
+    serving.kserve.io/enable-tag-routing: "true"
+    {{- end }}
+spec:
+  predictor:
+    minReplicas: {{ .Values.autoscaling.minReplicas }}
+    maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+    {{- if .Values.vllm.canary.enabled }}
+    canaryTrafficPercent: {{ .Values.vllm.canary.trafficPercent }}
+    {{- end }}
+    containers:
+      - name: kserve-container
+        image: {{ if .Values.vllm.canary.enabled }}{{ .Values.vllm.shim.imageCanary }}{{ else }}{{ .Values.vllm.shim.image }}{{ end }}
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: {{ .Values.vllm.shim.port }}
+            protocol: TCP
+        env:
+          - name: PORT
+            value: {{ .Values.vllm.shim.port | quote }}
+          - name: HOST
+            value: "0.0.0.0"
+          - name: VULCAN_RUNTIME_MODE
+            value: "cpu"
+          - name: VLLM_URL
+            value: "http://127.0.0.1:8000"
+          - name: VLLM_WAIT_SECONDS
+            value: "300"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.vllm.shim.port }}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.vllm.shim.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        resources:
+          {{- toYaml .Values.vllm.resources | nindent 10 }}
+      - name: vllm-engine
+        image: {{ if .Values.vllm.canary.enabled }}{{ .Values.vllm.engine.imageCanary }}{{ else }}{{ .Values.vllm.engine.image }}{{ end }}
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: VULCAN_RUNTIME_MODE
+            value: "cpu"
+          - name: VULCAN_MODEL_DIR
+            value: "/models/llm/gpt2-small"
+          - name: PORT
+            value: "8000"
+          - name: HOST
+            value: "0.0.0.0"
+        ports:
+          - containerPort: 8000
+            protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /v1/models
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+{{- end }}

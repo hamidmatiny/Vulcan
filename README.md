@@ -83,4 +83,4 @@ docs/{adr,benchmarks}/  tests/e2e/
 - **≥ 65% coverage** on gated packages
 - **Cursor rules** in [`.cursor/rules/`](./.cursor/rules/) enforce contract-first + CPU-fallback automatically
 
-Phase 5 status: BentoML / Ray Serve / Triton (both modalities) + vLLM (`:9004`, **LLM-only**) CPU adapters.
+Phase 6 status: compose adapters (BentoML / Ray Serve / Triton / vLLM) + KServe Helm packaging (manifest validation in CI; kind runbook manual).

@@ -9,4 +9,4 @@ Contract-compliant model-serving backends. Each subdirectory implements [`contra
 | [`ray-serve/`](./ray-serve/) | Phase 3 — both reference models, contract-complete | **9002** |
 | [`triton/`](./triton/) | Phase 4 — both reference models (ONNX + contract shim) | **9003** |
 | [`vllm/`](./vllm/) | Phase 5 — **LLM-only** (OpenAI-compatible engine + shim) | **9004** |
-| [`kserve/`](./kserve/) | Stub | TBD in 9000–9099 |
+| [`kserve/`](./kserve/) | Phase 6 — Helm InferenceServices (Triton/vLLM); validate-only CI | kind PF **9005** |

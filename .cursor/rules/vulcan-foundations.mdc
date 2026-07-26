@@ -71,7 +71,8 @@ Prefer small PRs mapped to a single phase or component.
   - `9002` — `serving/ray-serve`
   - `9003` — `serving/triton` (contract shim; Triton engine stays internal)
   - `9004` — `serving/vllm` (contract shim; vLLM/OpenAI engine stays internal)
-  - `9005–9098` — future backends / gateway / obs
+  - `9005` — optional local `kubectl port-forward` for KServe (no compose service)
+  - `9006–9098` — future backends / gateway / obs
   - `9099` — optional contract-stub / docs static
 - Reference server, stubs, and compose `ports:` MUST use this range. Never default to `8080`/`8090`/etc.
 
