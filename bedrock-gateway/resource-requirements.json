@@ -1,0 +1,16 @@
+{
+  "model_id": "amazon.titan-text-express-v1",
+  "backend": "bedrock",
+  "gpu_memory_mib": {
+    "min": 0,
+    "max": 0
+  },
+  "supports_mig": false,
+  "supports_quantization": false,
+  "cold_start_seconds": {
+    "min": 0,
+    "max": 5
+  },
+  "cpu_dev_mode": true,
+  "notes": "Managed Bedrock foundation models — no local GPU. cpu_dev_mode=true means CI/tests mock InvokeModel (moto); live Bedrock is manual-only. LLM-only like serving/vllm; vision → unsupported_modality. Default model_id is a Bedrock foundation model, not the phase-1 GPT-2 pin."
+}

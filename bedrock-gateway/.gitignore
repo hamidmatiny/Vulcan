@@ -1,0 +1,5 @@
+.venv/
+.coverage
+htmlcov/
+*.egg-info/
+.pytest_cache/

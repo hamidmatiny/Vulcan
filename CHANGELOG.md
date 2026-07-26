@@ -4,6 +4,12 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 11 — Bedrock-aware gateway adapter
+
+- `bedrock-gateway/`: thin LLM-branch contract shim over Bedrock `InvokeModel` (vLLM-shaped; vision unsupported)
+- Static `pricing-reference.json` ($/1K tokens + typical latency) for the phase-13 router
+- moto/fake-credential pytest in CI; optional local `:9006` (no compose)
+
 ### Phase 10 — SageMaker Pipelines, Endpoints, and Model Registry
 
 - `pipelines/sagemaker/`: SageMaker SDK Pipeline (train → evaluate → register) for `reference-tiny-llm`

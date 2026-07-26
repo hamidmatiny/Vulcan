@@ -7,7 +7,9 @@
 #   9003 — serving/triton (contract shim; engine is internal-only)
 #   9004 — serving/vllm (contract shim; OpenAI-compatible engine internal)
 #   9099 — contract OpenAPI stub (optional profile: stub)
-#   9005–9098 — reserved for later backends / gateway / observability
+#   9005 — optional KServe port-forward (no compose service)
+#   9006 — bedrock-gateway optional local shim (no compose; moto in CI)
+#   9007–9098 — reserved for later backends / gateway / observability
 
 name: vulcan
 

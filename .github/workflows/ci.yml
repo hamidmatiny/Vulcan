@@ -33,6 +33,7 @@ jobs:
       gpu_infra_gate: ${{ steps.filter.outputs.gpu_infra_gate }}
       autoscaling_gate: ${{ steps.filter.outputs.autoscaling_gate }}
       sagemaker_gate: ${{ steps.filter.outputs.sagemaker_gate }}
+      bedrock_gate: ${{ steps.filter.outputs.bedrock_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +56,8 @@ jobs:
             sagemaker_gate:
               - 'pipelines/sagemaker/**'
               - 'docs/runbooks/sagemaker-manual-run.md'
+            bedrock_gate:
+              - 'bedrock-gateway/**'
             bentoml_gate:
               - 'serving/bentoml/**'
               - 'contracts/**'
@@ -126,6 +129,7 @@ jobs:
           grep -q '9003' .cursor/rules/vulcan-foundations.mdc
           grep -q '9004' .cursor/rules/vulcan-foundations.mdc
           grep -q '9005' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9006' .cursor/rules/vulcan-foundations.mdc
           grep -qE 'phase-N:|fix\(<component>\)' .cursor/rules/vulcan-foundations.mdc
           test -f serving/kserve/helm/Chart.yaml
           test -f docs/runbooks/kserve-local-kind.md
@@ -634,6 +638,27 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
           SAGEMAKER_SUPPRESS_V2_WARNING: "1"
         run: make test-sagemaker
+
+  bedrock:
+    name: Bedrock gateway · moto adapter tests
+    needs: changes
+    if: needs.changes.outputs.bedrock_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Bedrock adapter tests (moto, no live AWS)
+        env:
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+          AWS_SECURITY_TOKEN: testing
+          AWS_SESSION_TOKEN: testing
+          AWS_DEFAULT_REGION: us-east-1
+        run: make test-bedrock
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra / autoscaling)

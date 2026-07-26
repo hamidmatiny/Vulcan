@@ -18,6 +18,8 @@
 
 Managed training/hosting comparison: [`pipelines/sagemaker/`](./pipelines/sagemaker/) (moto in CI; [manual runbook](./docs/runbooks/sagemaker-manual-run.md)).
 
+Bedrock as a selectable LLM backend: [`bedrock-gateway/`](./bedrock-gateway/) (thin adapter; moto in CI; optional `:9006`).
+
 ---
 
 ## Architecture (north star)
