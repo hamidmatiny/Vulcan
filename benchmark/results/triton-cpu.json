@@ -3,22 +3,22 @@
   "backend": "triton",
   "modality": "llm",
   "model_id": "reference-tiny-llm",
-  "target_url": "http://host.docker.internal:9003",
-  "started_at": "2026-07-26T04:19:04.303Z",
-  "duration_seconds": 0.095,
+  "target_url": "http://127.0.0.1:9003",
+  "started_at": "2026-07-26T04:26:00.000Z",
+  "duration_seconds": 22.4,
   "vus": 2,
   "runtime_mode": "cpu",
-  "notes": "k6 harness (phase-1). GPU runs are manual — see docs/benchmarks/.",
+  "notes": "Short CPU k6 regression against serving/triton (phase-4). Not a perf claim; GPU/perf_analyzer runs are manual — see serving/triton/README.md and docs/benchmarks/.",
   "metrics": {
-    "requests_total": 1,
-    "error_rate": 1,
-    "throughput_rps": 10.509,
+    "requests_total": 3,
+    "error_rate": 0,
+    "throughput_rps": 0.134,
     "latency_ms": {
-      "p50": 93.708,
-      "p95": 93.708,
-      "p99": 93.708,
-      "avg": 93.708,
-      "max": 93.708
+      "p50": 16778.445,
+      "p95": 21790.847,
+      "p99": 22236.393,
+      "avg": 16778.445,
+      "max": 22347.78
     }
   }
 }

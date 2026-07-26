@@ -39,7 +39,7 @@ ENV VULCAN_TOKENIZER_DIR=/models/llm/gpt2-small \
 WORKDIR /app/serving/triton
 EXPOSE 9003
 
-HEALTHCHECK --interval=10s --timeout=5s --start-period=120s --retries=24 \
+HEALTHCHECK --interval=10s --timeout=5s --start-period=240s --retries=36 \
   CMD curl -fsS http://127.0.0.1:9003/health | grep -q '"status":"ok"'
 
 CMD ["uvicorn", "shim.service:app", "--host", "0.0.0.0", "--port", "9003"]

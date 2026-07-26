@@ -90,11 +90,12 @@ services:
       triton-engine:
         condition: service_healthy
     healthcheck:
+      # Engine must already be healthy (depends_on); allow tokenizer/side-asset warm-up.
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9003/health"]
       interval: 10s
       timeout: 5s
-      retries: 24
-      start_period: 120s
+      retries: 36
+      start_period: 240s
     restart: unless-stopped
 
   # Phase-1 trivial reference server (no real weights) — optional.

@@ -226,18 +226,32 @@ def _infer_vision(images: list[dict[str, str]], prompt: str | None) -> dict[str,
 
 def _wait_for_triton() -> None:
     global _ready
-    deadline = time.time() + float(os.environ.get("TRITON_WAIT_SECONDS", "300"))
+    wait_secs = float(os.environ.get("TRITON_WAIT_SECONDS", "300"))
+    deadline = time.time() + wait_secs
     while time.time() < deadline:
         if _triton_ready():
             try:
                 _ensure_side_assets()
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
+                print(f"triton shim: side assets not ready yet: {exc}", flush=True)
                 time.sleep(2)
                 continue
             _ready = True
+            print(
+                f"triton shim: ready (engine={_triton_url()}; "
+                f"models={TRITON_LLM},{TRITON_VISION})",
+                flush=True,
+            )
             return
         time.sleep(2)
     _ready = False
+    print(
+        f"triton shim: ERROR — readiness timed out after {wait_secs:.0f}s "
+        f"(engine={_triton_url()}; expected READY models "
+        f"{TRITON_LLM}+{TRITON_VISION}). /health will stay 503. "
+        "Check: docker compose logs triton-engine",
+        flush=True,
+    )
 
 
 @app.on_event("startup")

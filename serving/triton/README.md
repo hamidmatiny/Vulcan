@@ -83,11 +83,15 @@ Triton holds requests briefly to form larger batches up to `max_batch_size`, imp
 ```bash
 make models-export
 make triton-prepare
-make up                      # bentoml :9000 + ray-serve :9002 + triton :9003
-curl -s localhost:9003/health
+make up                      # --wait until healthy (bentoml/ray-serve/triton)
 VULCAN_BACKEND_URL=http://127.0.0.1:9003 make test-serving-common
 make benchmark-triton        # → benchmark/results/triton-cpu.json
 ```
+
+`make up` uses `docker compose --wait`. Conformance and `benchmark-*` also call
+`make wait-for-health` (same poll loop as CI) so you do not need a manual sleep
+between `up` and tests. The shim is `ok` only when Triton `/v2/health/ready`
+and both `/v2/models/{reference_tiny_llm,reference_tiny_vision}/ready` succeed.
 
 Compose services:
 

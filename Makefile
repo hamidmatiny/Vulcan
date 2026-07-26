@@ -1,7 +1,8 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	lint reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
-	benchmark-triton benchmark-compare models-export models-verify triton-prepare help
+	benchmark-triton benchmark-compare models-export models-verify triton-prepare \
+	wait-for-health help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -17,18 +18,44 @@ REF_PORT ?= 9001
 BENTOML_PORT ?= 9000
 RAY_SERVE_PORT ?= 9002
 TRITON_PORT ?= 9003
+# Poll loop mirrors CI health-wait (96 × 5s ≈ 8 min).
+HEALTH_WAIT_RETRIES ?= 96
+HEALTH_WAIT_SLEEP_SECS ?= 5
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?##"}; {printf "  %-22s %s\n", $$1, $$2}'
 
 up: triton-prepare ## Start local stack (bentoml :9000, ray-serve :9002, triton :9003; CPU-only)
-	$(COMPOSE) up -d --build bentoml ray-serve triton
+	$(COMPOSE) up -d --build --wait bentoml ray-serve triton
 
 down: ## Stop local stack
 	$(COMPOSE) down
 
 logs: ## Follow compose logs
 	$(COMPOSE) logs -f
+
+# WAIT_URL=http://127.0.0.1:9003  OR  WAIT_PORT=9003 (host=$(REF_HOST))
+wait-for-health: ## Poll /health until "status":"ok" (set WAIT_URL or WAIT_PORT)
+	@url="$(WAIT_URL)"; \
+	if [ -z "$$url" ]; then \
+	  if [ -z "$(WAIT_PORT)" ]; then \
+	    echo "wait-for-health: set WAIT_URL or WAIT_PORT" >&2; exit 2; \
+	  fi; \
+	  url="http://$(REF_HOST):$(WAIT_PORT)"; \
+	fi; \
+	url="$${url%/}"; \
+	echo "==> wait-for-health $$url/health (retries=$(HEALTH_WAIT_RETRIES), sleep=$(HEALTH_WAIT_SLEEP_SECS)s)"; \
+	for i in $$(seq 1 $(HEALTH_WAIT_RETRIES)); do \
+	  if curl -fsS "$$url/health" 2>/dev/null | grep -q '"status":"ok"'; then \
+	    echo "ready: $$url"; \
+	    curl -fsS "$$url/health"; echo; \
+	    exit 0; \
+	  fi; \
+	  echo "waiting ($$i/$(HEALTH_WAIT_RETRIES))..."; \
+	  sleep $(HEALTH_WAIT_SLEEP_SECS); \
+	done; \
+	echo "wait-for-health: timed out waiting for $$url/health" >&2; \
+	exit 1
 
 $(CONTRACTS_VENV)/bin/pytest: $(CONTRACTS_DIR)/pyproject.toml
 	$(PYTHON) -m venv $(CONTRACTS_VENV)
@@ -49,7 +76,8 @@ test-contracts: $(CONTRACTS_VENV)/bin/pytest ## Contract schema tests (≥65% co
 
 test-serving-common: $(SERVING_COMMON_VENV)/bin/pytest ## Conformance + client tests (≥65%)
 	@if [ -n "$(VULCAN_BACKEND_URL)" ]; then \
-		echo "==> conformance against $$VULCAN_BACKEND_URL (no local coverage gate)"; \
+		$(MAKE) wait-for-health WAIT_URL="$(VULCAN_BACKEND_URL)"; \
+		echo "==> conformance against $(VULCAN_BACKEND_URL) (no local coverage gate)"; \
 		cd $(SERVING_COMMON_DIR) && .venv/bin/pytest -q tests/conformance; \
 	else \
 		cd $(SERVING_COMMON_DIR) && .venv/bin/pytest -q \
@@ -78,6 +106,7 @@ reference-server: $(SERVING_COMMON_VENV)/bin/pytest ## Trivial reference server 
 	$(SERVING_COMMON_VENV)/bin/vulcan-reference-server --host $(REF_HOST) --port $(REF_PORT)
 
 benchmark-smoke: ## k6 smoke against reference server (:9001)
+	@$(MAKE) wait-for-health WAIT_PORT=$(REF_PORT)
 	BASE_URL=http://$(REF_HOST):$(REF_PORT) \
 	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
 	VUS=2 DURATION=8s BACKEND_NAME=reference \
@@ -85,6 +114,7 @@ benchmark-smoke: ## k6 smoke against reference server (:9001)
 	bash benchmark/scripts/run_k6.sh
 
 benchmark-bentoml: ## Short CPU k6 against bentoml (:9000) → bentoml-cpu.json
+	@$(MAKE) wait-for-health WAIT_PORT=$(BENTOML_PORT)
 	BASE_URL=http://$(REF_HOST):$(BENTOML_PORT) \
 	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
 	VUS=2 DURATION=10s BACKEND_NAME=bentoml \
@@ -92,6 +122,7 @@ benchmark-bentoml: ## Short CPU k6 against bentoml (:9000) → bentoml-cpu.json
 	bash benchmark/scripts/run_k6.sh
 
 benchmark-ray-serve: ## Short CPU k6 against ray-serve (:9002) → ray-serve-cpu.json
+	@$(MAKE) wait-for-health WAIT_PORT=$(RAY_SERVE_PORT)
 	BASE_URL=http://$(REF_HOST):$(RAY_SERVE_PORT) \
 	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
 	VUS=2 DURATION=10s BACKEND_NAME=ray-serve \
@@ -99,6 +130,7 @@ benchmark-ray-serve: ## Short CPU k6 against ray-serve (:9002) → ray-serve-cpu
 	bash benchmark/scripts/run_k6.sh
 
 benchmark-triton: ## Short CPU k6 against triton (:9003) → triton-cpu.json
+	@$(MAKE) wait-for-health WAIT_PORT=$(TRITON_PORT)
 	BASE_URL=http://$(REF_HOST):$(TRITON_PORT) \
 	MODEL_TYPE=llm MODEL_ID=reference-tiny-llm \
 	VUS=2 DURATION=10s BACKEND_NAME=triton \
