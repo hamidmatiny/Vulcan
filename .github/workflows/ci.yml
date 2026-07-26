@@ -46,6 +46,7 @@ jobs:
               - 'gpu-infra/**'
               - 'infra/terraform/**'
               - 'docs/adr/003-mig-partitioning-strategy.md'
+              - 'docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md'
             bentoml_gate:
               - 'serving/bentoml/**'
               - 'contracts/**'
@@ -100,6 +101,7 @@ jobs:
           test -f docs/adr/001-unified-model-serving-contract.md
           test -f docs/adr/002-gpu-cost-safety-policy.md
           test -f docs/adr/003-mig-partitioning-strategy.md
+          test -f docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md
           test -f models/MANIFEST.md
           test -f models/pins.json
       - name: Port convention (9000–9099)

@@ -1,0 +1,32 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: WorkloadPriorityClass
+metadata:
+  name: {{ .Values.priorityClasses.inferenceCritical.name }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+value: {{ .Values.priorityClasses.inferenceCritical.value }}
+description: {{ .Values.priorityClasses.inferenceCritical.description | quote }}
+preemptionPolicy: PreemptLowerPriority
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: WorkloadPriorityClass
+metadata:
+  name: {{ .Values.priorityClasses.inferenceBatch.name }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+value: {{ .Values.priorityClasses.inferenceBatch.value }}
+description: {{ .Values.priorityClasses.inferenceBatch.description | quote }}
+preemptionPolicy: PreemptLowerPriority
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: WorkloadPriorityClass
+metadata:
+  name: {{ .Values.priorityClasses.training.name }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+value: {{ .Values.priorityClasses.training.value }}
+description: {{ .Values.priorityClasses.training.description | quote }}
+preemptionPolicy: PreemptLowerPriority

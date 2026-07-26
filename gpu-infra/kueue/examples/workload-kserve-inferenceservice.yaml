@@ -1,0 +1,90 @@
+# Example: KServe InferenceService (phase 6) gated through Kueue admission.
+# The InferenceService is labeled with the inference team's LocalQueue.
+# Kueue creates/tracks a Workload; we also show an explicit Workload CR that
+# mirrors the predictor pod template (for validate-only / documentation).
+#
+# Apply out-of-band only (ADR-002). Requires Kueue + queues from this chart.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-inference
+  labels:
+    vulcan.dev/team: inference
+    app.kubernetes.io/part-of: vulcan
+---
+# Phase-6 style InferenceService — queue label suspends pods until Kueue admits.
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: vulcan-triton
+  namespace: team-inference
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/backend: triton
+    kueue.x-k8s.io/queue-name: lq-inference
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+    kueue.x-k8s.io/priority-class: vulcan-inference-critical
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 2
+    containers:
+      - name: kserve-container
+        image: vulcan-triton:cpu
+        ports:
+          - containerPort: 9003
+            protocol: TCP
+        resources:
+          requests:
+            cpu: "1"
+            memory: 4Gi
+            nvidia.com/mig-1g.5gb: "1"
+          limits:
+            cpu: "2"
+            memory: 8Gi
+            nvidia.com/mig-1g.5gb: "1"
+        env:
+          - name: PORT
+            value: "9003"
+          - name: TRITON_URL
+            value: "127.0.0.1:8000"
+      - name: triton-engine
+        image: vulcan-triton-engine:cpu
+        resources:
+          requests:
+            cpu: "1"
+            memory: 4Gi
+---
+# Explicit Workload object representing the admitted unit (podSets).
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: Workload
+metadata:
+  name: vulcan-triton-predictor
+  namespace: team-inference
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/example: kserve-inferenceservice
+    vulcan.dev/component: kueue
+spec:
+  queueName: lq-inference
+  priorityClassName: vulcan-inference-critical
+  active: true
+  podSets:
+    - name: predictor
+      count: 1
+      template:
+        spec:
+          tolerations:
+            - key: nvidia.com/gpu
+              operator: Exists
+              effect: NoSchedule
+          containers:
+            - name: kserve-container
+              image: vulcan-triton:cpu
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: 4Gi
+                  nvidia.com/mig-1g.5gb: "1"

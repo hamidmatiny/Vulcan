@@ -4,6 +4,12 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 8 — Kueue multi-tenant GPU scheduling
+
+- `gpu-infra/kueue/`: inference + training ClusterQueues/LocalQueues, MIG-aware quotas, WorkloadPriorityClasses
+- Example Workloads for KServe InferenceService + forward-ref training Job
+- [ADR-004](./docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md); adr-gate requires it for `gpu-infra/kueue/`
+
 ### Phase 7 — GPU Operator, device plugin, and MIG
 
 - `gpu-infra/gpu-operator/`: EKS Helm values with explicit driver/toolkit vs device-plugin separation

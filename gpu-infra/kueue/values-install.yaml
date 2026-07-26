@@ -1,0 +1,29 @@
+# Kueue Helm chart values (https://github.com/kubernetes-sigs/kueue)
+# Install (manual / out-of-band only — ADR-002):
+#   helm upgrade --install kueue oci://registry.k8s.io/kueue/charts/kueue \
+#     --version 0.9.1 -n kueue-system --create-namespace \
+#     -f gpu-infra/kueue/values-install.yaml
+#
+# Queue CRs live in gpu-infra/kueue/chart/ (validated via helm template + conftest).
+
+enablePrometheus: true
+
+controllerManager:
+  replicas: 1
+  manager:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Integrations used by Vulcan examples (KServe via Job/Deployment admission + batch Jobs).
+integrations:
+  frameworks:
+    - batch/job
+    - deployment
+    - statefulset
+  # KServe InferenceService pods are admitted when labeled with kueue.x-k8s.io/queue-name
+  # (see examples/). Enable pod integration if your Kueue version exposes it.

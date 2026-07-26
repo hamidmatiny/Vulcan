@@ -1,0 +1,87 @@
+# Inference team — nominal quota on ADR-003 many-small-inference MIG slices.
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: {{ .Values.teams.inference.clusterQueue }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+    vulcan.dev/team: inference
+spec:
+  namespaceSelector:
+    matchLabels:
+      vulcan.dev/team: inference
+  cohort: {{ .Values.cohort }}
+  queueingStrategy: BestEffortFIFO
+  preemption:
+    withinClusterQueue: LowerPriority
+    reclaimWithinCohort: Any
+  resourceGroups:
+    - coveredResources:
+        - cpu
+        - memory
+        - nvidia.com/mig-1g.5gb
+      flavors:
+        - name: {{ .Values.flavors.migSmall.name }}
+          resources:
+            - name: cpu
+              nominalQuota: {{ .Values.teams.inference.cpu | quote }}
+            - name: memory
+              nominalQuota: {{ .Values.teams.inference.memory }}
+            - name: nvidia.com/mig-1g.5gb
+              nominalQuota: {{ .Values.teams.inference.mig1g5gb }}
+              borrowingLimit: {{ div (mul .Values.teams.inference.mig1g5gb .Values.borrowing.inferenceBorrowLimitPercent) 100 }}
+---
+# Training team — nominal quota on ADR-003 training-large-batch partitions + some full GPUs.
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ClusterQueue
+metadata:
+  name: {{ .Values.teams.training.clusterQueue }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+    vulcan.dev/team: training
+spec:
+  namespaceSelector:
+    matchLabels:
+      vulcan.dev/team: training
+  cohort: {{ .Values.cohort }}
+  queueingStrategy: BestEffortFIFO
+  preemption:
+    withinClusterQueue: LowerPriority
+    reclaimWithinCohort: LowerPriority
+  resourceGroups:
+    - coveredResources:
+        - cpu
+        - memory
+        - nvidia.com/mig-3g.40gb
+        - nvidia.com/mig-4g.40gb
+        - nvidia.com/gpu
+      flavors:
+        - name: {{ .Values.flavors.migLarge.name }}
+          resources:
+            - name: cpu
+              nominalQuota: {{ .Values.teams.training.cpu | quote }}
+            - name: memory
+              nominalQuota: {{ .Values.teams.training.memory }}
+            - name: nvidia.com/mig-3g.40gb
+              nominalQuota: {{ .Values.teams.training.mig3g40gb }}
+              borrowingLimit: {{ .Values.teams.training.mig3g40gb }}
+            - name: nvidia.com/mig-4g.40gb
+              nominalQuota: {{ .Values.teams.training.mig4g40gb }}
+              borrowingLimit: {{ .Values.teams.training.mig4g40gb }}
+            - name: nvidia.com/gpu
+              nominalQuota: 0
+        - name: {{ .Values.flavors.gpuFull.name }}
+          resources:
+            - name: cpu
+              nominalQuota: "16"
+            - name: memory
+              nominalQuota: 64Gi
+            - name: nvidia.com/mig-3g.40gb
+              nominalQuota: 0
+            - name: nvidia.com/mig-4g.40gb
+              nominalQuota: 0
+            - name: nvidia.com/gpu
+              nominalQuota: {{ .Values.teams.training.fullGpu }}
+              borrowingLimit: {{ div (mul .Values.teams.training.fullGpu .Values.borrowing.trainingBorrowLimitPercent) 100 }}

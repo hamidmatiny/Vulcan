@@ -1,0 +1,86 @@
+# Example: forward-referenced training Job gated through Kueue (training team).
+# Represents a future training pipeline Job (Kubeflow / custom) that requests
+# ADR-003 large MIG partitions. Suspended until Kueue admits against cq-training.
+#
+# Apply out-of-band only (ADR-002).
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-training
+  labels:
+    vulcan.dev/team: training
+    app.kubernetes.io/part-of: vulcan
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vulcan-finetune-example
+  namespace: team-training
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/example: training-job
+    kueue.x-k8s.io/queue-name: lq-training
+  annotations:
+    kueue.x-k8s.io/priority-class: vulcan-training
+spec:
+  suspend: true
+  parallelism: 1
+  completions: 1
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        kueue.x-k8s.io/queue-name: lq-training
+    spec:
+      restartPolicy: Never
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: trainer
+          image: vulcan/training-placeholder:phase-forward
+          command: ["python", "-c", "print('forward-ref training job')"]
+          resources:
+            requests:
+              cpu: "4"
+              memory: 32Gi
+              nvidia.com/mig-3g.40gb: "1"
+            limits:
+              cpu: "8"
+              memory: 64Gi
+              nvidia.com/mig-3g.40gb: "1"
+---
+# Explicit Workload CR (Kueue also auto-creates one for managed Jobs).
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: Workload
+metadata:
+  name: vulcan-finetune-example
+  namespace: team-training
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/example: training-job
+    vulcan.dev/component: kueue
+spec:
+  queueName: lq-training
+  priorityClassName: vulcan-training
+  active: true
+  podSets:
+    - name: main
+      count: 1
+      template:
+        spec:
+          restartPolicy: Never
+          tolerations:
+            - key: nvidia.com/gpu
+              operator: Exists
+              effect: NoSchedule
+          containers:
+            - name: trainer
+              image: vulcan/training-placeholder:phase-forward
+              resources:
+                requests:
+                  cpu: "4"
+                  memory: 32Gi
+                  nvidia.com/mig-3g.40gb: "1"

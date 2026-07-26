@@ -1,0 +1,23 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: {{ .Values.teams.inference.localQueue }}
+  namespace: {{ .Values.teams.inference.namespace }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+    vulcan.dev/team: inference
+spec:
+  clusterQueue: {{ .Values.teams.inference.clusterQueue }}
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: LocalQueue
+metadata:
+  name: {{ .Values.teams.training.localQueue }}
+  namespace: {{ .Values.teams.training.namespace }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+    vulcan.dev/team: training
+spec:
+  clusterQueue: {{ .Values.teams.training.clusterQueue }}

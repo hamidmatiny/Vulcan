@@ -1,0 +1,65 @@
+# Two teams share the phase-7 GPU pool via separate ClusterQueues in one cohort.
+# Quotas reference ADR-003 MIG profiles (1g.5gb vs 3g/4g) plus full-GPU flavor.
+
+cohort: vulcan-gpu-cohort
+
+teams:
+  inference:
+    namespace: team-inference
+    clusterQueue: cq-inference
+    localQueue: lq-inference
+    # Nominal quota on many-small MIG slices (ADR-003 many-small-inference).
+    mig1g5gb: 14
+    cpu: "32"
+    memory: 128Gi
+    fullGpu: 0
+  training:
+    namespace: team-training
+    clusterQueue: cq-training
+    localQueue: lq-training
+    # Nominal quota on large MIG partitions (ADR-003 training-large-batch).
+    mig3g40gb: 2
+    mig4g40gb: 2
+    cpu: "64"
+    memory: 256Gi
+    fullGpu: 2
+
+# Borrowing within the cohort (fair-share / anti-starvation knobs).
+borrowing:
+  # Inference may lend unused small MIG capacity; training may borrow up to this.
+  trainingBorrowLimitPercent: 50
+  inferenceBorrowLimitPercent: 25
+
+priorityClasses:
+  inferenceCritical:
+    name: vulcan-inference-critical
+    value: 1000
+    description: Online inference / KServe predictors — can preempt training
+  inferenceBatch:
+    name: vulcan-inference-batch
+    value: 500
+    description: Batch inference — mid priority
+  training:
+    name: vulcan-training
+    value: 100
+    description: Training / large-batch jobs — preemptible by inference-critical
+
+flavors:
+  migSmall:
+    name: mig-small
+    nodeLabels:
+      vulcan.dev/gpu: "true"
+      vulcan.dev/mig: many-small-inference
+  migLarge:
+    name: mig-large
+    nodeLabels:
+      vulcan.dev/gpu: "true"
+      vulcan.dev/mig: training-large-batch
+  gpuFull:
+    name: gpu-full
+    nodeLabels:
+      vulcan.dev/gpu: "true"
+      vulcan.dev/gpu-pool: inference
+
+createNamespaces: true
+includeExamples: false

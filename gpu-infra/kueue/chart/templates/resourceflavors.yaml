@@ -1,0 +1,46 @@
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: {{ .Values.flavors.migSmall.name }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+    vulcan.dev/mig-profile: many-small-inference
+spec:
+  nodeLabels:
+    {{- toYaml .Values.flavors.migSmall.nodeLabels | nindent 4 }}
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: {{ .Values.flavors.migLarge.name }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+    vulcan.dev/mig-profile: training-large-batch
+spec:
+  nodeLabels:
+    {{- toYaml .Values.flavors.migLarge.nodeLabels | nindent 4 }}
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+---
+apiVersion: kueue.x-k8s.io/v1beta1
+kind: ResourceFlavor
+metadata:
+  name: {{ .Values.flavors.gpuFull.name }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/component: kueue
+spec:
+  nodeLabels:
+    {{- toYaml .Values.flavors.gpuFull.nodeLabels | nindent 4 }}
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule

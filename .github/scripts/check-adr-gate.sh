@@ -10,6 +10,7 @@ ADR_DIR="docs/adr"
 ADR_CONTRACTS="001-unified-model-serving-contract.md"
 ADR_GPU_COST="002-gpu-cost-safety-policy.md"
 ADR_MIG="003-mig-partitioning-strategy.md"
+ADR_KUEUE="004-multi-tenant-gpu-scheduling-with-kueue.md"
 
 CHANGED_FILES=""
 if [[ -n "${ADR_GATE_CHANGED_FILES:-}" ]]; then
@@ -28,6 +29,8 @@ fi
 
 touched_contracts=0
 touched_gpu_infra=0
+touched_mig_or_operator=0
+touched_kueue=0
 
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
@@ -36,6 +39,14 @@ while IFS= read -r path; do
   esac
   case "$path" in
     gpu-infra|gpu-infra/*) touched_gpu_infra=1 ;;
+  esac
+  case "$path" in
+    gpu-infra/mig|gpu-infra/mig/*|gpu-infra/gpu-operator|gpu-infra/gpu-operator/*)
+      touched_mig_or_operator=1
+      ;;
+  esac
+  case "$path" in
+    gpu-infra/kueue|gpu-infra/kueue/*) touched_kueue=1 ;;
   esac
 done <<< "$CHANGED_FILES"
 
@@ -59,7 +70,14 @@ fi
 
 if [[ "$touched_gpu_infra" -eq 1 ]]; then
   check_adr "gpu-infra/" "$ADR_GPU_COST"
-  check_adr "gpu-infra/" "$ADR_MIG"
+fi
+
+if [[ "$touched_mig_or_operator" -eq 1 ]]; then
+  check_adr "gpu-infra/mig|gpu-operator/" "$ADR_MIG"
+fi
+
+if [[ "$touched_kueue" -eq 1 ]]; then
+  check_adr "gpu-infra/kueue/" "$ADR_KUEUE"
 fi
 
 if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 ]]; then

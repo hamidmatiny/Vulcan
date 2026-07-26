@@ -1,0 +1,19 @@
+{{- if .Values.createNamespaces }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.teams.inference.namespace }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/team: inference
+    vulcan.dev/component: kueue
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.teams.training.namespace }}
+  labels:
+    app.kubernetes.io/part-of: vulcan
+    vulcan.dev/team: training
+    vulcan.dev/component: kueue
+{{- end }}
