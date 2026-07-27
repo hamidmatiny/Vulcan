@@ -57,6 +57,7 @@ Prefer small PRs mapped to a single phase or component.
 ## Layout
 
 - Contracts in `contracts/`; serving adapters in `serving/{common,bentoml,ray-serve,triton,vllm,kserve}/`.
+- Training backends in `training/{ray-train,fsdp-ddp,deepspeed}/` (ADR-009 / ADR-010).
 - Routing gateway in `gateway/`; observability (Prometheus/Grafana/Tempo/OTel) in `observability/`.
 - GPU orchestration in `gpu-infra/` and `autoscaling/`; cloud packaging in `infra/{terraform,helm,argocd}/`.
 - Docs and ADRs in `docs/`; do not invent parallel top-level doc trees.
@@ -78,7 +79,10 @@ Prefer small PRs mapped to a single phase or component.
   - `9008` — Prometheus (`observability/`)
   - `9009` — Grafana (`observability/`)
   - `9010` — Tempo query (`observability/`; OTLP collector stays on docker network)
-  - `9011–9098` — future backends / obs
+  - `9011` — `training/ray-train` optional status HTTP (compose profile: `training`)
+  - `9012` — `training/fsdp-ddp` optional status HTTP (compose profile: `training`)
+  - `9013` — `training/deepspeed` optional status HTTP (compose profile: `training`)
+  - `9014–9098` — future backends / obs
   - Phase 6–9 K8s/GPU infra + phase 10 SageMaker: **no** docker-compose host port (validate-only / moto in CI)
   - `9099` — optional contract-stub / docs static
 - Reference server, stubs, and compose `ports:` MUST use this range. Never default to `8080`/`8090`/etc.

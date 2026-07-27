@@ -4,6 +4,14 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 18 — Training backends (v1.2.0 track)
+
+- `contracts/training-job-contract/`: `TrainingJobSpec` / `TrainingJobResult` OpenAPI + JSON Schema (ADR-010)
+- `training/{ray-train,fsdp-ddp,deepspeed}/`: CPU-simulated distributed training (`gloo`, world_size=2; ADR-009)
+- FSDP/DDP SIGTERM → checkpoint → resume test; DeepSpeed ZeRO-1/2 CPU path + [GPU runbook](./docs/runbooks/deepspeed-gpu-mode.md)
+- Cost-exporter: `vulcan_estimated_cost_usd_per_training_step` from training results × ADR-008 `$/GPU-hour`
+- Host ports **9011–9013** (compose profile `training`); ADR-009 / ADR-010
+
 ### Phase 17 — Cost-per-token and GPU utilization tracking
 
 - `observability/gpu-metrics/`: real DCGM-exporter Helm values + cluster Prometheus scrape for phase-7 pools; synthetic DCGM-shaped exporter for compose/CI

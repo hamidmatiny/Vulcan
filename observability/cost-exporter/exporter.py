@@ -52,9 +52,21 @@ EXPORTER_INFO = Gauge(
     ["mode"],
     registry=REGISTRY,
 )
+COST_PER_TRAINING_STEP = Gauge(
+    "vulcan_estimated_cost_usd_per_training_step",
+    "Estimated $/training-step from steps/sec × ADR-008 $/GPU-hour (static_reference_assumption)",
+    ["backend", "model_id", "instance_type", "source"],
+    registry=REGISTRY,
+)
+TRAINING_STEPS_PER_SEC = Gauge(
+    "vulcan_training_steps_per_sec",
+    "Recorded steps/sec from training/results (ADR-010 TrainingJobResult)",
+    ["backend", "model_id", "source"],
+    registry=REGISTRY,
+)
 
 _BENCH_THROUGHPUT: dict[str, tuple[float, str, str]] = {}
-
+_TRAINING_THROUGHPUT: dict[str, tuple[float, str, str]] = {}
 
 def _load_benchmarks(dir_path: Path) -> None:
     global _BENCH_THROUGHPUT
@@ -97,6 +109,30 @@ def _load_gpu_hour_assumptions(path: Path) -> dict:
     return data
 
 
+def _load_training_results(dir_path: Path) -> None:
+    """Load TrainingJobResult metrics.json / result.json under training/results/."""
+    global _TRAINING_THROUGHPUT
+    _TRAINING_THROUGHPUT = {}
+    if not dir_path.is_dir():
+        return
+    for path in sorted(dir_path.glob("**/result.json")) + sorted(dir_path.glob("**/metrics.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        backend = data.get("backend")
+        metrics = data.get("metrics") or {}
+        steps_per_sec = metrics.get("steps_per_sec")
+        if not backend or steps_per_sec is None or float(steps_per_sec) <= 0:
+            continue
+        if data.get("source") not in (None, "static_reference_assumption"):
+            continue
+        model_id = str(data.get("model_id") or "reference-tiny-llm")
+        src = str(path.as_posix())
+        _TRAINING_THROUGHPUT[backend] = (float(steps_per_sec), src, model_id)
+        TRAINING_STEPS_PER_SEC.labels(backend, model_id, src).set(float(steps_per_sec))
+
+
 def _apply_self_hosted_cost_per_token(assumptions: dict) -> None:
     if not assumptions or not _BENCH_THROUGHPUT:
         return
@@ -119,6 +155,27 @@ def _apply_self_hosted_cost_per_token(assumptions: dict) -> None:
         COST_PER_1K.labels(backend, model_id, source).set(per_token * 1000.0)
         COST_PER_INFER.labels(backend, model_id, source).set(per_token * t_req)
 
+
+def _apply_training_cost_per_step(assumptions: dict) -> None:
+    """$/training-step = ($/GPU-hour / 3600) / steps_per_sec (ADR-008 assumptions)."""
+    if not assumptions or not _TRAINING_THROUGHPUT:
+        return
+    src_assump = "observability/cost-exporter/gpu-hour-assumptions.json"
+    itype = (
+        assumptions.get("default_instance_type_for_self_hosted_training")
+        or assumptions.get("default_instance_type_for_self_hosted_inference")
+        or "g5.xlarge"
+    )
+    types = assumptions.get("instance_types") or {}
+    meta = types.get(itype) or {}
+    usd_hr = meta.get("usd_per_gpu_hour")
+    if usd_hr is None:
+        return
+    usd_per_sec = float(usd_hr) / 3600.0
+    for backend, (steps_per_sec, train_src, model_id) in _TRAINING_THROUGHPUT.items():
+        per_step = usd_per_sec / steps_per_sec
+        source = f"{train_src}+{src_assump}"
+        COST_PER_TRAINING_STEP.labels(backend, model_id, itype, source).set(per_step)
 
 def _load_bedrock(path: Path) -> None:
     if not path.is_file():
@@ -153,12 +210,14 @@ def refresh() -> None:
             str(Path(__file__).resolve().parent / "gpu-hour-assumptions.json"),
         )
     )
+    train_dir = Path(os.environ.get("VULCAN_TRAINING_RESULTS_DIR", "/training-results"))
     _load_benchmarks(bench)
     assumptions = _load_gpu_hour_assumptions(assumptions_path)
     _apply_self_hosted_cost_per_token(assumptions)
+    _load_training_results(train_dir)
+    _apply_training_cost_per_step(assumptions)
     _load_bedrock(pricing)
     EXPORTER_INFO.labels(os.environ.get("VULCAN_RUNTIME_MODE", "cpu")).set(1)
-
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802

@@ -1,0 +1,5 @@
+# Same Ray pin as serving/ray-serve (CVE-2025-62593 floor; do not diverge).
+ray[train]>=2.52.0,<2.53
+torch>=2.2,<2.7
+pytest>=8.0
+pytest-cov>=5.0

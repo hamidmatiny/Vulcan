@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "backend": "fsdp-ddp",
+  "model_id": "reference-tiny-llm",
+  "dataset": {
+    "kind": "synthetic_tokens",
+    "num_samples": 64,
+    "seq_len": 16
+  },
+  "hyperparameters": {
+    "max_steps": 8,
+    "batch_size": 2,
+    "learning_rate": 0.001,
+    "checkpoint_every_steps": 2,
+    "seed": 0
+  },
+  "distributed": {
+    "world_size": 2,
+    "dist_backend": "gloo",
+    "strategy": "ddp"
+  },
+  "cpu_dev_mode": true,
+  "output_dir": "training/results/fsdp-ddp",
+  "resume": true
+}

@@ -46,6 +46,9 @@ jobs:
       advanced_gpu_gate: ${{ steps.filter.outputs.advanced_gpu_gate }}
       security_gate: ${{ steps.filter.outputs.security_gate }}
       docs_gate: ${{ steps.filter.outputs.docs_gate }}
+      ray_train_gate: ${{ steps.filter.outputs.ray_train_gate }}
+      fsdp_ddp_gate: ${{ steps.filter.outputs.fsdp_ddp_gate }}
+      deepspeed_gate: ${{ steps.filter.outputs.deepspeed_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +60,8 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'Makefile'
               - 'docker-compose.yml'
+              - 'training/**'
+              - 'contracts/training-job-contract/**'
             security_gate:
               - '**/Dockerfile*'
               - 'gateway/**'
@@ -136,6 +141,25 @@ jobs:
             kserve_gate:
               - 'serving/kserve/**'
               - 'docs/runbooks/kserve-local-kind.md'
+            ray_train_gate:
+              - 'training/ray-train/**'
+              - 'training/common/**'
+              - 'contracts/training-job-contract/**'
+              - 'docs/adr/009-gpu-cost-safety-extends-to-training.md'
+              - 'docs/adr/010-unified-training-job-contract.md'
+            fsdp_ddp_gate:
+              - 'training/fsdp-ddp/**'
+              - 'training/common/**'
+              - 'contracts/training-job-contract/**'
+              - 'docs/adr/009-gpu-cost-safety-extends-to-training.md'
+              - 'docs/adr/010-unified-training-job-contract.md'
+            deepspeed_gate:
+              - 'training/deepspeed/**'
+              - 'training/common/**'
+              - 'contracts/training-job-contract/**'
+              - 'docs/adr/009-gpu-cost-safety-extends-to-training.md'
+              - 'docs/adr/010-unified-training-job-contract.md'
+              - 'docs/runbooks/deepspeed-gpu-mode.md'
 
   lint:
     name: Lint
@@ -167,8 +191,15 @@ jobs:
           test -f docs/adr/006-routing-policy.md
           test -f docs/adr/007-advanced-gpu-serving-techniques-scope.md
           test -f docs/adr/008-self-hosted-cost-per-token-assumptions.md
+          test -f docs/adr/009-gpu-cost-safety-extends-to-training.md
+          test -f docs/adr/010-unified-training-job-contract.md
           test -f models/MANIFEST.md
           test -f models/pins.json
+          test -f contracts/training-job-contract/openapi.yaml
+          test -f training/ray-train/train.py
+          test -f training/fsdp-ddp/train.py
+          test -f training/deepspeed/train.py
+          test -f docs/runbooks/deepspeed-gpu-mode.md
       - name: Port convention (9000–9099)
         run: |
           grep -qE '9000[–-]9099' docker-compose.yml
@@ -182,6 +213,9 @@ jobs:
           grep -q 'VULCAN_PROMETHEUS_PORT:-9008' docker-compose.yml
           grep -q 'VULCAN_GRAFANA_PORT:-9009' docker-compose.yml
           grep -q 'VULCAN_TEMPO_PORT:-9010' docker-compose.yml
+          grep -q 'VULCAN_RAY_TRAIN_PORT:-9011' docker-compose.yml
+          grep -q 'VULCAN_FSDP_DDP_PORT:-9012' docker-compose.yml
+          grep -q 'VULCAN_DEEPSPEED_PORT:-9013' docker-compose.yml
           grep -q '9002' .cursor/rules/vulcan-foundations.mdc
           grep -q '9003' .cursor/rules/vulcan-foundations.mdc
           grep -q '9004' .cursor/rules/vulcan-foundations.mdc
@@ -191,6 +225,9 @@ jobs:
           grep -q '9008' .cursor/rules/vulcan-foundations.mdc
           grep -q '9009' .cursor/rules/vulcan-foundations.mdc
           grep -q '9010' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9011' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9012' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9013' .cursor/rules/vulcan-foundations.mdc
           grep -qE 'phase-N:|fix\(<component>\)' .cursor/rules/vulcan-foundations.mdc
           test -f serving/kserve/helm/Chart.yaml
           test -f docs/runbooks/kserve-local-kind.md
@@ -217,6 +254,17 @@ jobs:
           cd contracts/model-contract
           pytest -q \
             --cov=vulcan_model_contract \
+            --cov-report=term-missing \
+            --cov-fail-under=${{ env.COVERAGE_MIN }}
+      - name: Install + test training-job-contract (coverage ≥65%)
+        run: |
+          python -m pip install -U pip
+          python -m venv contracts/training-job-contract/.venv
+          . contracts/training-job-contract/.venv/bin/activate
+          pip install -e "contracts/training-job-contract[dev]"
+          cd contracts/training-job-contract
+          pytest -q \
+            --cov=vulcan_training_contract \
             --cov-report=term-missing \
             --cov-fail-under=${{ env.COVERAGE_MIN }}
 
@@ -285,7 +333,7 @@ jobs:
             --exclude='**/models/artifacts/**' \
             --exclude='**/site/**' \
             --exclude='**/node_modules/**' \
-            serving/ gateway/ bedrock-gateway/ pipelines/ autoscaling/checkpointing/ observability/cost-exporter/ contracts/
+            serving/ gateway/ bedrock-gateway/ pipelines/ autoscaling/checkpointing/ observability/cost-exporter/ contracts/ training/
 
   docs:
     name: Docs · MkDocs build
@@ -1035,8 +1083,95 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  ray-train:
+    name: Ray Train · CPU gloo world_size=2
+    needs: changes
+    if: needs.changes.outputs.ray_train_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install training deps (Ray pin matches serving/ray-serve)
+        run: |
+          python -m pip install -U pip
+          python -m venv training/ray-train/.venv
+          . training/ray-train/.venv/bin/activate
+          pip install -r training/ray-train/requirements.txt
+          pip install -e "contracts/training-job-contract[dev]"
+          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Ray Train CPU job + pytest
+        env:
+          PYTHONHASHSEED: "0"
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          . training/ray-train/.venv/bin/activate
+          python training/ray-train/train.py --output-dir training/results/ray-train
+          pytest -q training/ray-train/tests
+
+  fsdp-ddp:
+    name: FSDP/DDP · CPU gloo world_size=2 + SIGTERM resume
+    needs: changes
+    if: needs.changes.outputs.fsdp_ddp_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install FSDP/DDP deps
+        run: |
+          python -m pip install -U pip
+          python -m venv training/fsdp-ddp/.venv
+          . training/fsdp-ddp/.venv/bin/activate
+          pip install -r training/fsdp-ddp/requirements.txt
+          pip install -e "contracts/training-job-contract[dev]"
+          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: DDP train + SIGTERM resume pytest
+        env:
+          PYTHONHASHSEED: "0"
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          . training/fsdp-ddp/.venv/bin/activate
+          python training/fsdp-ddp/train.py --strategy ddp --output-dir training/results/fsdp-ddp
+          pytest -q training/fsdp-ddp/tests
+
+  deepspeed:
+    name: DeepSpeed · CPU ZeRO-1 world_size=2
+    needs: changes
+    if: needs.changes.outputs.deepspeed_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install DeepSpeed deps
+        run: |
+          python -m pip install -U pip
+          python -m venv training/deepspeed/.venv
+          . training/deepspeed/.venv/bin/activate
+          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r training/deepspeed/requirements.txt
+          pip install -e "contracts/training-job-contract[dev]"
+      - name: DeepSpeed CPU ZeRO-1 job + pytest
+        env:
+          PYTHONHASHSEED: "0"
+          PYTHONPATH: ${{ github.workspace }}
+          DS_BUILD_OPS: "0"
+          DS_ACCELERATOR: "cpu"
+          CUDA_VISIBLE_DEVICES: ""
+        run: |
+          . training/deepspeed/.venv/bin/activate
+          python training/deepspeed/train.py --zero-stage 1 --output-dir training/results/deepspeed
+          pytest -q training/deepspeed/tests
+
   adr-gate:
-    name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu / cost-token)
+    name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu / cost-token / training)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

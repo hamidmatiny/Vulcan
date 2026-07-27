@@ -1,7 +1,8 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	test-checkpointing test-sagemaker test-bedrock test-gateway \
-	test-cost-exporter docs-serve docs-build up-observability lint \
+	test-cost-exporter test-ray-train test-fsdp-ddp test-deepspeed \
+	docs-serve docs-build up-observability lint \
 	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export \
 	models-verify triton-prepare wait-for-health validate-kserve \
@@ -12,6 +13,8 @@ COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
 CONTRACTS_DIR := contracts/model-contract
 CONTRACTS_VENV := $(CONTRACTS_DIR)/.venv
+TRAINING_CONTRACTS_DIR := contracts/training-job-contract
+TRAINING_CONTRACTS_VENV := $(TRAINING_CONTRACTS_DIR)/.venv
 SERVING_COMMON_DIR := serving/common
 SERVING_COMMON_VENV := $(SERVING_COMMON_DIR)/.venv
 CHECKPOINTING_DIR := autoscaling/checkpointing
@@ -33,6 +36,9 @@ GATEWAY_PORT ?= 9007
 PROMETHEUS_PORT ?= 9008
 GRAFANA_PORT ?= 9009
 TEMPO_PORT ?= 9010
+RAY_TRAIN_PORT ?= 9011
+FSDP_DDP_PORT ?= 9012
+DEEPSPEED_PORT ?= 9013
 # Poll loop mirrors CI health-wait (96 × 5s ≈ 8 min).
 HEALTH_WAIT_RETRIES ?= 96
 HEALTH_WAIT_SLEEP_SECS ?= 5
@@ -87,9 +93,18 @@ $(SERVING_COMMON_VENV)/bin/pytest: $(SERVING_COMMON_DIR)/pyproject.toml $(CONTRA
 	$(SERVING_COMMON_VENV)/bin/pip install -e "$(CONTRACTS_DIR)[dev]"
 	$(SERVING_COMMON_VENV)/bin/pip install -e "$(SERVING_COMMON_DIR)[dev]"
 
-test-contracts: $(CONTRACTS_VENV)/bin/pytest ## Contract schema tests (≥65% coverage)
+$(TRAINING_CONTRACTS_VENV)/bin/pytest: $(TRAINING_CONTRACTS_DIR)/pyproject.toml
+	$(PYTHON) -m venv $(TRAINING_CONTRACTS_VENV)
+	$(TRAINING_CONTRACTS_VENV)/bin/pip install -U pip
+	$(TRAINING_CONTRACTS_VENV)/bin/pip install -e "$(TRAINING_CONTRACTS_DIR)[dev]"
+
+test-contracts: $(CONTRACTS_VENV)/bin/pytest $(TRAINING_CONTRACTS_VENV)/bin/pytest ## Contract schema tests (≥65% coverage)
 	cd $(CONTRACTS_DIR) && .venv/bin/pytest -q \
 		--cov=vulcan_model_contract \
+		--cov-report=term-missing \
+		--cov-fail-under=$(COVERAGE_MIN)
+	cd $(TRAINING_CONTRACTS_DIR) && .venv/bin/pytest -q \
+		--cov=vulcan_training_contract \
 		--cov-report=term-missing \
 		--cov-fail-under=$(COVERAGE_MIN)
 
@@ -111,15 +126,51 @@ test-benchmark: $(SERVING_COMMON_VENV)/bin/pytest ## Benchmark compare-script un
 test: test-contracts test-serving-common test-benchmark test-gateway test-cost-exporter ## Fan-out unit tests
 	@echo "==> test: OK"
 
-lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest ## Fan-out linters
+lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest $(TRAINING_CONTRACTS_VENV)/bin/pytest ## Fan-out linters
 	@echo "==> lint: ruff (model-contract)"
 	cd $(CONTRACTS_DIR) && .venv/bin/ruff check src tests
+	@echo "==> lint: ruff (training-job-contract)"
+	cd $(TRAINING_CONTRACTS_DIR) && .venv/bin/ruff check src tests
 	@echo "==> lint: ruff (serving/common)"
 	cd $(SERVING_COMMON_DIR) && .venv/bin/ruff check src tests
-	@echo "==> lint: ADR presence (001, 002)"
+	@echo "==> lint: ADR presence (001, 002, 009, 010)"
 	@test -f docs/adr/001-unified-model-serving-contract.md
 	@test -f docs/adr/002-gpu-cost-safety-policy.md
+	@test -f docs/adr/009-gpu-cost-safety-extends-to-training.md
+	@test -f docs/adr/010-unified-training-job-contract.md
 	@echo "==> lint: OK"
+
+test-ray-train: ## Ray Train CPU world_size=2 job + pytest
+	$(PYTHON) -m venv training/ray-train/.venv
+	training/ray-train/.venv/bin/pip install -U pip
+	training/ray-train/.venv/bin/pip install -r training/ray-train/requirements.txt
+	training/ray-train/.venv/bin/pip install -e "contracts/training-job-contract[dev]"
+	training/ray-train/.venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+	PYTHONHASHSEED=0 PYTHONPATH=. training/ray-train/.venv/bin/python training/ray-train/train.py \
+		--output-dir training/results/ray-train
+	PYTHONHASHSEED=0 PYTHONPATH=. training/ray-train/.venv/bin/pytest -q training/ray-train/tests
+
+test-fsdp-ddp: ## FSDP/DDP CPU gloo + SIGTERM resume pytest
+	$(PYTHON) -m venv training/fsdp-ddp/.venv
+	training/fsdp-ddp/.venv/bin/pip install -U pip
+	training/fsdp-ddp/.venv/bin/pip install -r training/fsdp-ddp/requirements.txt
+	training/fsdp-ddp/.venv/bin/pip install -e "contracts/training-job-contract[dev]"
+	training/fsdp-ddp/.venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+	PYTHONHASHSEED=0 PYTHONPATH=. training/fsdp-ddp/.venv/bin/python training/fsdp-ddp/train.py \
+		--strategy ddp --output-dir training/results/fsdp-ddp
+	PYTHONHASHSEED=0 PYTHONPATH=. training/fsdp-ddp/.venv/bin/pytest -q training/fsdp-ddp/tests
+
+test-deepspeed: ## DeepSpeed CPU ZeRO-1 world_size=2 + pytest
+	$(PYTHON) -m venv training/deepspeed/.venv
+	training/deepspeed/.venv/bin/pip install -U pip
+	training/deepspeed/.venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+	training/deepspeed/.venv/bin/pip install -r training/deepspeed/requirements.txt
+	training/deepspeed/.venv/bin/pip install -e "contracts/training-job-contract[dev]"
+	PYTHONHASHSEED=0 PYTHONPATH=. DS_BUILD_OPS=0 DS_ACCELERATOR=cpu CUDA_VISIBLE_DEVICES= \
+		training/deepspeed/.venv/bin/python training/deepspeed/train.py \
+		--zero-stage 1 --output-dir training/results/deepspeed
+	PYTHONHASHSEED=0 PYTHONPATH=. DS_ACCELERATOR=cpu CUDA_VISIBLE_DEVICES= \
+		training/deepspeed/.venv/bin/pytest -q training/deepspeed/tests
 
 reference-server: $(SERVING_COMMON_VENV)/bin/pytest ## Trivial reference server (:9001)
 	$(SERVING_COMMON_VENV)/bin/vulcan-reference-server --host $(REF_HOST) --port $(REF_PORT)

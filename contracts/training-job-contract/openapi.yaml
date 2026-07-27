@@ -1,0 +1,69 @@
+openapi: 3.1.0
+info:
+  title: Vulcan Training Job Contract
+  version: 0.1.0
+  description: |
+    Backend-agnostic training job contract (ADR-010). Specs and results are
+    primarily file artifacts; optional local status HTTP exposes health/metrics
+    during a run (ports 9011–9013).
+servers:
+  - url: http://127.0.0.1:9011
+    description: Optional ray-train status (local)
+paths:
+  /health:
+    get:
+      summary: Training worker liveness
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, backend]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, starting, training, interrupted]
+                  backend:
+                    type: string
+  /metrics:
+    get:
+      summary: Prometheus exposition (optional during run)
+      responses:
+        "200":
+          description: Prometheus text
+          content:
+            text/plain:
+              schema:
+                type: string
+  /v1/training/spec:
+    post:
+      summary: Validate a TrainingJobSpec (contract self-check)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingJobSpec"
+      responses:
+        "200":
+          description: Spec accepted
+        "400":
+          description: Invalid spec
+  /v1/training/result:
+    get:
+      summary: Last TrainingJobResult artifact (when present)
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingJobResult"
+components:
+  schemas:
+    TrainingJobSpec:
+      $ref: "./schemas/training-job-spec.schema.json"
+    TrainingJobResult:
+      $ref: "./schemas/training-job-result.schema.json"

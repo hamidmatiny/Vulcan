@@ -6,14 +6,17 @@
 #   9002 — serving/ray-serve
 #   9003 — serving/triton (contract shim; engine is internal-only)
 #   9004 — serving/vllm (contract shim; OpenAI-compatible engine internal)
-#   9099 — contract OpenAPI stub (optional profile: stub)
 #   9005 — optional KServe port-forward (no compose service)
 #   9006 — bedrock-gateway optional local shim (no compose; moto in CI)
 #   9007 — gateway (routing; ADR-006)
 #   9008 — prometheus
 #   9009 — grafana
 #   9010 — tempo (trace query; OTLP stays on docker network)
-#   9011–9098 — reserved
+#   9011 — training/ray-train optional status (profile: training)
+#   9012 — training/fsdp-ddp optional status (profile: training)
+#   9013 — training/deepspeed optional status (profile: training)
+#   9014–9098 — reserved
+#   9099 — contract OpenAPI stub (optional profile: stub)
 
 name: vulcan
 
@@ -320,3 +323,98 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # Optional training status HTTP (ADR-010). Jobs themselves are CLI; these stubs
+  # reserve host ports 9011–9013 for local dashboards / scrape smoke.
+  training-ray-train-status:
+    profiles: ["training"]
+    image: python:3.12-slim-bookworm
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+    command:
+      [
+        "python",
+        "training/common/status_server.py",
+        "--backend",
+        "ray-train",
+        "--port",
+        "9011",
+        "--result",
+        "training/results/ray-train/result.json",
+      ]
+    ports:
+      - "${VULCAN_RAY_TRAIN_PORT:-9011}:9011"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9011/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  training-fsdp-ddp-status:
+    profiles: ["training"]
+    image: python:3.12-slim-bookworm
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+    command:
+      [
+        "python",
+        "training/common/status_server.py",
+        "--backend",
+        "fsdp-ddp",
+        "--port",
+        "9012",
+        "--result",
+        "training/results/fsdp-ddp/result.json",
+      ]
+    ports:
+      - "${VULCAN_FSDP_DDP_PORT:-9012}:9012"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9012/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  training-deepspeed-status:
+    profiles: ["training"]
+    image: python:3.12-slim-bookworm
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+    command:
+      [
+        "python",
+        "training/common/status_server.py",
+        "--backend",
+        "deepspeed",
+        "--port",
+        "9013",
+        "--result",
+        "training/results/deepspeed/result.json",
+      ]
+    ports:
+      - "${VULCAN_DEEPSPEED_PORT:-9013}:9013"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9013/health')",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10

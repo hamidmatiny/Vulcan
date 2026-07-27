@@ -8,7 +8,7 @@
 
 **Docs:** `make docs-serve` (MkDocs) · [DEMO](./docs/DEMO_SCRIPT.md) · [Case study](./docs/CASE_STUDY.md) · [Known gaps](./docs/KNOWN_GAPS.md) · [ADRs](./docs/adr/) · [CHANGELOG](./CHANGELOG.md)
 
-**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15). **main** continues the **v1.1.0 track** (phases 16–17 landed; no `v1.1.0` tag yet).
+**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15). **main** continues the **v1.2.0 track** (phase-18 training backends landed; no `v1.2.0` tag yet). Phase 16–17 (v1.1.0 track) remain on main without a `v1.1.0` tag.
 
 | ADR | Decision |
 |-----|----------|
@@ -20,6 +20,8 @@
 | [ADR-006](./docs/adr/006-routing-policy.md) | Routing policy (benchmark-driven selection + fallback) |
 | [ADR-007](./docs/adr/007-advanced-gpu-serving-techniques-scope.md) | Advanced GPU serving scope — GPTQ/AWQ/FP8 packs, speculative decoding docs, TensorRT-LLM templates; validate-only in CI (no invented tokens/s) |
 | [ADR-008](./docs/adr/008-self-hosted-cost-per-token-assumptions.md) | Self-hosted cost-per-token — `$/GPU-hour` assumptions for phase-7 instance types × benchmark throughput; labeled assumptions, not invoices |
+| [ADR-009](./docs/adr/009-gpu-cost-safety-extends-to-training.md) | GPU cost-safety extends to training — CI uses CPU `gloo` world_size=2 only; no invented GPU throughput |
+| [ADR-010](./docs/adr/010-unified-training-job-contract.md) | Unified training job contract — `TrainingJobSpec` / `TrainingJobResult` for Ray Train, FSDP/DDP, DeepSpeed |
 
 Managed training/hosting comparison: [`pipelines/sagemaker/`](./pipelines/sagemaker/) (moto in CI; [manual runbook](./docs/runbooks/sagemaker-manual-run.md)).
 
@@ -29,7 +31,9 @@ Training→serving loop: [`pipelines/kubeflow/`](./pipelines/kubeflow/) (KFP + T
 
 Routing gateway: [`gateway/`](./gateway/) on **:9007** (ADR-006; recorded benchmarks + Bedrock pricing; explainable fallback).
 
-Observability: [`observability/`](./observability/) — Prometheus **:9008**, Grafana **:9009**, Tempo **:9010** (`make up-observability`). Phase-17 adds **cost-per-token** panels (Bedrock pricing-reference + ADR-008 `$/GPU-hour` math) and GPU utilization via real DCGM Helm under [`observability/gpu-metrics/`](./observability/gpu-metrics/) for phase-7 pools, with a **LIVE-SYNTHETIC** DCGM-shaped exporter for compose/CI.
+Observability: [`observability/`](./observability/) — Prometheus **:9008**, Grafana **:9009**, Tempo **:9010** (`make up-observability`). Phase-17 adds **cost-per-token** panels (Bedrock pricing-reference + ADR-008 `$/GPU-hour` math) and GPU utilization via real DCGM Helm under [`observability/gpu-metrics/`](./observability/gpu-metrics/) for phase-7 pools, with a **LIVE-SYNTHETIC** DCGM-shaped exporter for compose/CI. Phase-18 adds **`$/training-step`** from `training/results/` × the same assumptions file.
+
+Training (phase-18): [`training/`](./training/) — Ray Train, FSDP/DDP, and DeepSpeed behind [`contracts/training-job-contract/`](./contracts/training-job-contract/) (ADR-010). CI runs CPU `gloo` world_size=2 only (ADR-009); optional status HTTP on **:9011–:9013** (`docker compose --profile training up`).
 
 Advanced GPU serving (phase-16): [`serving/vllm/gpu-variants/`](./serving/vllm/gpu-variants/) (GPTQ/AWQ/FP8 resource manifests) and [`serving/triton/tensorrt-llm/`](./serving/triton/tensorrt-llm/) (TensorRT-LLM `config.pbtxt` + Dockerfile + [runbook](./docs/runbooks/tensorrt-llm-build.md)) — schema/`config.pbtxt` lint in CI only; no GPU build or invented throughput ([ADR-007](./docs/adr/007-advanced-gpu-serving-techniques-scope.md)).
 

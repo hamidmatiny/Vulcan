@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulcan.local/schemas/training-job-spec.schema.json",
+  "title": "TrainingJobSpec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "backend",
+    "model_id",
+    "dataset",
+    "hyperparameters",
+    "distributed",
+    "cpu_dev_mode"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "backend": {
+      "type": "string",
+      "enum": ["ray-train", "fsdp-ddp", "deepspeed"]
+    },
+    "model_id": {
+      "type": "string",
+      "const": "reference-tiny-llm",
+      "description": "Pinned reference model id from models/pins.json"
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "num_samples", "seq_len"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["synthetic_tokens"] },
+        "num_samples": { "type": "integer", "minimum": 1 },
+        "seq_len": { "type": "integer", "minimum": 4, "maximum": 128 }
+      }
+    },
+    "hyperparameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_steps", "batch_size", "learning_rate"],
+      "properties": {
+        "max_steps": { "type": "integer", "minimum": 1 },
+        "batch_size": { "type": "integer", "minimum": 1 },
+        "learning_rate": { "type": "number", "exclusiveMinimum": 0 },
+        "checkpoint_every_steps": { "type": "integer", "minimum": 1 },
+        "seed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "distributed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["world_size", "dist_backend", "strategy"],
+      "properties": {
+        "world_size": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "dist_backend": { "type": "string", "enum": ["gloo", "nccl"] },
+        "strategy": {
+          "type": "string",
+          "enum": ["ddp", "fsdp", "deepspeed_zero1", "deepspeed_zero2", "ray_train"]
+        }
+      }
+    },
+    "cpu_dev_mode": { "type": "boolean" },
+    "output_dir": { "type": "string", "minLength": 1 },
+    "resume": { "type": "boolean", "default": true }
+  }
+}

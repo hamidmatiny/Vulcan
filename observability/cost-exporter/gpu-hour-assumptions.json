@@ -8,6 +8,8 @@
   "assumed_tokens_per_request": 16,
   "assumed_tokens_per_request_notes": "Matches typical short Vulcan k6 max_tokens used in CPU CI harnesses. Not measured token accounting from production.",
   "default_instance_type_for_self_hosted_inference": "g5.xlarge",
+  "default_instance_type_for_self_hosted_training": "g5.xlarge",
+  "default_instance_type_for_self_hosted_training_notes": "Phase-18 training cost-per-step reuses the same g5.xlarge $/GPU-hour assumption as inference (static_reference_assumption). Not an invoice.",
   "instance_types": {
     "g5.xlarge": {
       "usd_per_gpu_hour": 1.006,

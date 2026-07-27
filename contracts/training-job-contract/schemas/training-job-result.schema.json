@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulcan.local/schemas/training-job-result.schema.json",
+  "title": "TrainingJobResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "backend",
+    "model_id",
+    "status",
+    "checkpoint_path",
+    "metrics",
+    "cpu_dev_mode"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "backend": {
+      "type": "string",
+      "enum": ["ray-train", "fsdp-ddp", "deepspeed"]
+    },
+    "model_id": { "type": "string", "const": "reference-tiny-llm" },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "interrupted", "failed"]
+    },
+    "checkpoint_path": { "type": "string", "minLength": 1 },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "loss_curve",
+        "samples_per_sec",
+        "steps_per_sec",
+        "wall_clock_seconds",
+        "final_loss",
+        "steps_completed"
+      ],
+      "properties": {
+        "loss_curve": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step", "loss"],
+            "properties": {
+              "step": { "type": "integer", "minimum": 0 },
+              "loss": { "type": "number" }
+            }
+          }
+        },
+        "samples_per_sec": { "type": "number", "minimum": 0 },
+        "steps_per_sec": { "type": "number", "minimum": 0 },
+        "wall_clock_seconds": { "type": "number", "minimum": 0 },
+        "final_loss": { "type": "number" },
+        "steps_completed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "resumed_from_checkpoint": { "type": "boolean" },
+    "cpu_dev_mode": { "type": "boolean" },
+    "source": {
+      "type": "string",
+      "description": "Label for cost math; must remain static_reference_assumption when used with ADR-008 assumptions"
+    }
+  }
+}

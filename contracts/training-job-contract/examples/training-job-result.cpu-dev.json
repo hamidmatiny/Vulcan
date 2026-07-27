@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "backend": "fsdp-ddp",
+  "model_id": "reference-tiny-llm",
+  "status": "completed",
+  "checkpoint_path": "training/results/fsdp-ddp/checkpoint.pt",
+  "metrics": {
+    "loss_curve": [
+      { "step": 1, "loss": 2.5 },
+      { "step": 8, "loss": 1.2 }
+    ],
+    "samples_per_sec": 12.0,
+    "steps_per_sec": 3.0,
+    "wall_clock_seconds": 2.5,
+    "final_loss": 1.2,
+    "steps_completed": 8
+  },
+  "resumed_from_checkpoint": false,
+  "cpu_dev_mode": true,
+  "source": "static_reference_assumption"
+}

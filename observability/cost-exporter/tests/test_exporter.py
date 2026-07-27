@@ -77,6 +77,54 @@ def test_refresh_loads_benchmark_pricing_and_cost_per_token(tmp_path: Path, monk
     assert "g5.xlarge" in body
 
 
+def test_refresh_loads_training_cost_per_step(tmp_path: Path, monkeypatch) -> None:
+    train = tmp_path / "training" / "ray-train"
+    train.mkdir(parents=True)
+    (train / "result.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "backend": "ray-train",
+                "model_id": "reference-tiny-llm",
+                "status": "completed",
+                "checkpoint_path": str(train / "checkpoint.pt"),
+                "metrics": {
+                    "loss_curve": [{"step": 1, "loss": 1.0}],
+                    "samples_per_sec": 8.0,
+                    "steps_per_sec": 2.0,
+                    "wall_clock_seconds": 2.0,
+                    "final_loss": 1.0,
+                    "steps_completed": 4,
+                },
+                "cpu_dev_mode": True,
+                "source": "static_reference_assumption",
+            }
+        ),
+        encoding="utf-8",
+    )
+    assumptions = tmp_path / "gpu-hour.json"
+    assumptions.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source": "static_reference_assumption",
+                "default_instance_type_for_self_hosted_training": "g5.xlarge",
+                "instance_types": {"g5.xlarge": {"usd_per_gpu_hour": 1.0}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("VULCAN_BENCHMARK_DIR", str(tmp_path / "missing-bench"))
+    monkeypatch.setenv("VULCAN_BEDROCK_PRICING", str(tmp_path / "missing-pricing.json"))
+    monkeypatch.setenv("VULCAN_GPU_HOUR_ASSUMPTIONS", str(assumptions))
+    monkeypatch.setenv("VULCAN_TRAINING_RESULTS_DIR", str(tmp_path / "training"))
+    exporter.refresh()
+    body = exporter.generate_latest(exporter.REGISTRY).decode()
+    assert "vulcan_training_steps_per_sec" in body
+    assert "vulcan_estimated_cost_usd_per_training_step" in body
+    assert 'backend="ray-train"' in body
+
+
 def test_metrics_http_endpoint(tmp_path: Path, monkeypatch) -> None:
     bench = tmp_path / "bench"
     bench.mkdir()

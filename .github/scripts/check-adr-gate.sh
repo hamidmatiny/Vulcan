@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fail CI when contracts/, gpu-infra/, autoscaling/, gateway/, advanced GPU
-# serving, or cost/GPU-metrics paths change without required ADRs.
+# serving, cost/GPU-metrics, or training paths change without required ADRs.
 # Mapping is intentional and narrow — extend as new ADRs land.
 set -euo pipefail
 
@@ -16,6 +16,8 @@ ADR_SPOT="005-spot-gpu-strategy.md"
 ADR_ROUTING="006-routing-policy.md"
 ADR_ADVANCED_GPU="007-advanced-gpu-serving-techniques-scope.md"
 ADR_COST_TOKEN="008-self-hosted-cost-per-token-assumptions.md"
+ADR_TRAINING_GPU_COST="009-gpu-cost-safety-extends-to-training.md"
+ADR_TRAINING_CONTRACT="010-unified-training-job-contract.md"
 
 CHANGED_FILES=""
 if [[ -n "${ADR_GATE_CHANGED_FILES:-}" ]]; then
@@ -28,7 +30,7 @@ elif [[ -n "${GITHUB_BASE_REF:-}" ]]; then
 fi
 
 if [[ -z "${CHANGED_FILES}" ]]; then
-  CHANGED_FILES="$(git ls-files contracts gpu-infra autoscaling gateway serving/vllm/gpu-variants serving/triton/tensorrt-llm observability/gpu-metrics observability/cost-exporter/gpu-hour-assumptions.json || true)"
+  CHANGED_FILES="$(git ls-files contracts gpu-infra autoscaling gateway serving/vllm/gpu-variants serving/triton/tensorrt-llm observability/gpu-metrics observability/cost-exporter/gpu-hour-assumptions.json training || true)"
 fi
 
 touched_contracts=0
@@ -39,6 +41,7 @@ touched_autoscaling=0
 touched_gateway=0
 touched_advanced_gpu=0
 touched_cost_token=0
+touched_training=0
 
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
@@ -70,6 +73,11 @@ while IFS= read -r path; do
   case "$path" in
     observability/gpu-metrics|observability/gpu-metrics/*|observability/cost-exporter/gpu-hour-assumptions.json)
       touched_cost_token=1
+      ;;
+  esac
+  case "$path" in
+    training|training/*|contracts/training-job-contract|contracts/training-job-contract/*)
+      touched_training=1
       ;;
   esac
 done <<< "$CHANGED_FILES"
@@ -120,11 +128,16 @@ if [[ "$touched_cost_token" -eq 1 ]]; then
   check_adr "observability/gpu-metrics|gpu-hour-assumptions.json" "$ADR_COST_TOKEN"
 fi
 
-if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 && "$touched_autoscaling" -eq 0 && "$touched_gateway" -eq 0 && "$touched_advanced_gpu" -eq 0 && "$touched_cost_token" -eq 0 ]]; then
-  echo "ADR gate skip: no changes under contracts/, gpu-infra/, autoscaling/, gateway/, advanced GPU serving, or cost/GPU-metrics paths"
+if [[ "$touched_training" -eq 1 ]]; then
+  check_adr "training/|contracts/training-job-contract/" "$ADR_TRAINING_GPU_COST"
+  check_adr "training/|contracts/training-job-contract/" "$ADR_TRAINING_CONTRACT"
 fi
 
-if [[ "$touched_contracts" -eq 1 || "$touched_gpu_infra" -eq 1 || "$touched_autoscaling" -eq 1 || "$touched_gateway" -eq 1 || "$touched_advanced_gpu" -eq 1 || "$touched_cost_token" -eq 1 ]]; then
+if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 && "$touched_autoscaling" -eq 0 && "$touched_gateway" -eq 0 && "$touched_advanced_gpu" -eq 0 && "$touched_cost_token" -eq 0 && "$touched_training" -eq 0 ]]; then
+  echo "ADR gate skip: no changes under gated paths"
+fi
+
+if [[ "$touched_contracts" -eq 1 || "$touched_gpu_infra" -eq 1 || "$touched_autoscaling" -eq 1 || "$touched_gateway" -eq 1 || "$touched_advanced_gpu" -eq 1 || "$touched_cost_token" -eq 1 || "$touched_training" -eq 1 ]]; then
   if [[ ! -f "${ADR_DIR}/index.md" ]]; then
     echo "ADR gate FAIL: ${ADR_DIR}/index.md is missing"
     fail=1
