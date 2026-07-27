@@ -4,6 +4,13 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 20 — DVC data versioning (deterministic model exports)
+
+- `dvc.yaml` wraps existing `export_llm.py` / `export_vision.py`; local filesystem remote only in CI (ADR-012)
+- Cross-check: DVC-tracked primary outs' SHA256 must match `sha256sums.txt` / MANIFEST (does not replace MANIFEST)
+- Scope: deterministic reference exports only — no training/adapter content-hash tracking (extends ADR-009 / ADR-011)
+- CI `dvc-repro` job: `dvc repro` + clean `dvc status` + unchanged `dvc.lock`
+
 ### Phase 19 — LoRA / PEFT (adapter fine-tuning + transparent serving)
 
 - `LoraFineTuneSpec` / `LoraFineTuneResult` in `contracts/training-job-contract/` (ADR-011; extends ADR-010)

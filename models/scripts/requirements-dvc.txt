@@ -1,0 +1,3 @@
+# Optional DVC tooling for phase-20 (keep export requirements.txt lean).
+dvc>=3.50,<4
+PyYAML>=6.0

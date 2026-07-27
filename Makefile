@@ -5,7 +5,7 @@
 	docs-serve docs-build up-observability lint \
 	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export \
-	models-verify triton-prepare wait-for-health validate-kserve \
+	models-verify dvc-repro triton-prepare wait-for-health validate-kserve \
 	validate-gpu-infra validate-autoscaling validate-kubeflow \
 	validate-advanced-gpu help
 
@@ -133,12 +133,15 @@ lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest $(TRAINING_
 	cd $(TRAINING_CONTRACTS_DIR) && .venv/bin/ruff check src tests
 	@echo "==> lint: ruff (serving/common)"
 	cd $(SERVING_COMMON_DIR) && .venv/bin/ruff check src tests
-	@echo "==> lint: ADR presence (001, 002, 009, 010, 011)"
+	@echo "==> lint: ADR presence (001, 002, 009, 010, 011, 012)"
 	@test -f docs/adr/001-unified-model-serving-contract.md
 	@test -f docs/adr/002-gpu-cost-safety-policy.md
 	@test -f docs/adr/009-gpu-cost-safety-extends-to-training.md
 	@test -f docs/adr/010-unified-training-job-contract.md
 	@test -f docs/adr/011-lora-peft-adapter-serving-integration.md
+	@test -f docs/adr/012-data-versioning-with-dvc.md
+	@test -f dvc.yaml
+	@test -f dvc.lock
 	@echo "==> lint: OK"
 
 test-ray-train: ## Ray Train CPU world_size=2 job + pytest
@@ -335,4 +338,19 @@ models-export: ## Fetch/export pinned reference models (CPU)
 	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/write_manifest.py --require-artifacts
 
 models-verify: ## Verify artifacts match MANIFEST.md
+	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/verify_manifest.py
+
+dvc-repro: ## DVC repro + clean status + cross-check vs sha256sums (ADR-012)
+	$(PYTHON) -m venv models/.venv-dvc
+	models/.venv-dvc/bin/pip install -U pip
+	models/.venv-dvc/bin/pip install -r models/scripts/requirements-dvc.txt
+	@test -x $(MODELS_VENV)/bin/python || $(MAKE) models-export
+	$(MODELS_VENV)/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
+	mkdir -p .dvc-remote
+	PYTHONHASHSEED=0 models/.venv-dvc/bin/dvc repro
+	@status=$$(PYTHONHASHSEED=0 models/.venv-dvc/bin/dvc status); \
+		echo "$$status"; \
+		echo "$$status" | grep -q 'Data and pipelines are up to date' || \
+		( echo "FAIL: dvc status not clean" >&2; exit 1 )
+	PYTHONPATH=models/scripts models/.venv-dvc/bin/python models/scripts/verify_dvc_manifest.py
 	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/verify_manifest.py

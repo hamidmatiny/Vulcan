@@ -1,0 +1,52 @@
+schema: '2.0'
+stages:
+  export-llm:
+    cmd: env PYTHONHASHSEED=0 models/.venv/bin/python 
+      models/scripts/export_llm.py
+    deps:
+    - path: models/pins.json
+      hash: md5
+      md5: 3eaf9d713ce550072917db896bb29643
+      size: 1431
+    - path: models/scripts/common.py
+      hash: md5
+      md5: 3b8825912216569483caf53bdb2a36c1
+      size: 1478
+    - path: models/scripts/export_llm.py
+      hash: md5
+      md5: 358bd1effc5d0a241d640d2aad4a75e7
+      size: 4297
+    - path: models/scripts/requirements.txt
+      hash: md5
+      md5: d2a762a7b1ac39a570698f77fbaaafa2
+      size: 175
+    outs:
+    - path: models/artifacts/llm/gpt2-small/model.safetensors
+      hash: md5
+      md5: 8b9634194d1029deff7964617b8bcc75
+      size: 548105171
+  export-vision:
+    cmd: env PYTHONHASHSEED=0 models/.venv/bin/python 
+      models/scripts/export_vision.py
+    deps:
+    - path: models/pins.json
+      hash: md5
+      md5: 3eaf9d713ce550072917db896bb29643
+      size: 1431
+    - path: models/scripts/common.py
+      hash: md5
+      md5: 3b8825912216569483caf53bdb2a36c1
+      size: 1478
+    - path: models/scripts/export_vision.py
+      hash: md5
+      md5: 39534c4b170ead2d58850344d664f790
+      size: 4420
+    - path: models/scripts/requirements.txt
+      hash: md5
+      md5: d2a762a7b1ac39a570698f77fbaaafa2
+      size: 175
+    outs:
+    - path: models/artifacts/vision/resnet18/model.onnx
+      hash: md5
+      md5: 861c68b120143660485e4a492203882b
+      size: 46811492

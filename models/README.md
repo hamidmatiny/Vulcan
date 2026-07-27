@@ -11,11 +11,17 @@ Pinned CPU-runnable reference models for Vulcan. Every later serving backend mus
 
 Canonical digests: **[`MANIFEST.md`](./MANIFEST.md)** · machine-readable: [`pins.json`](./pins.json)
 
+DVC (ADR-012) wraps the same export scripts for deterministic outs only — see repo-root
+[`dvc.yaml`](../dvc.yaml). `make dvc-repro` runs `dvc repro`, asserts a clean `dvc status`,
+and cross-checks primary SHA256s against `sha256sums.txt` / MANIFEST. Training/adapter
+artifacts are **not** DVC-tracked. Cloud remotes: [runbook](../docs/runbooks/dvc-remote.md).
+
 ## Fetch / export
 
 ```bash
 make models-export    # downloads + exports under models/artifacts/
 make models-verify    # checks sha256 against MANIFEST.md
+make dvc-repro        # DVC pipeline + clean status + MANIFEST cross-check
 ```
 
 Weight binaries (`*.safetensors`, `*.onnx`, …) are gitignored. Config/tokenizer sidecars and `sha256sums.txt` may be committed. CI never requires GPU (ADR-002).
@@ -30,6 +36,8 @@ models/
   scripts/export_vision.py
   scripts/write_manifest.py
   scripts/verify_manifest.py
+  scripts/verify_dvc_manifest.py
+  scripts/requirements-dvc.txt
   artifacts/llm/gpt2-small/
   artifacts/vision/resnet18/
 ```

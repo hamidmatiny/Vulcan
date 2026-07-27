@@ -8,7 +8,7 @@
 
 **Docs:** `make docs-serve` (MkDocs) · [DEMO](./docs/DEMO_SCRIPT.md) · [Case study](./docs/CASE_STUDY.md) · [Known gaps](./docs/KNOWN_GAPS.md) · [ADRs](./docs/adr/) · [CHANGELOG](./CHANGELOG.md)
 
-**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15). **main** continues the **v1.2.0 track** (phase-18 training + phase-19 LoRA/PEFT; no `v1.2.0` tag yet). Phase 16–17 (v1.1.0 track) remain on main without a `v1.1.0` tag.
+**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15). **main** continues the **v1.2.0 track** (phases 18–20: training, LoRA/PEFT, DVC; no `v1.2.0` tag yet). Phase 16–17 (v1.1.0 track) remain on main without a `v1.1.0` tag.
 
 | ADR | Decision |
 |-----|----------|
@@ -23,6 +23,7 @@
 | [ADR-009](./docs/adr/009-gpu-cost-safety-extends-to-training.md) | GPU cost-safety extends to training — CI uses CPU `gloo` world_size=2 only; no invented GPU throughput |
 | [ADR-010](./docs/adr/010-unified-training-job-contract.md) | Unified training job contract — `TrainingJobSpec` / `TrainingJobResult` for Ray Train, FSDP/DDP, DeepSpeed |
 | [ADR-011](./docs/adr/011-lora-peft-adapter-serving-integration.md) | LoRA / PEFT — fine-tune job type + BentoML base+adapter via unchanged `/v1/infer`; structural verify, no adapter hash pins |
+| [ADR-012](./docs/adr/012-data-versioning-with-dvc.md) | DVC for deterministic model exports — local remote in CI; MANIFEST cross-check; never track training/adapters by hash |
 
 Managed training/hosting comparison: [`pipelines/sagemaker/`](./pipelines/sagemaker/) (moto in CI; [manual runbook](./docs/runbooks/sagemaker-manual-run.md)).
 

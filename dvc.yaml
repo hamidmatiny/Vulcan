@@ -1,0 +1,28 @@
+# DVC pipeline — deterministic reference model exports only (ADR-012).
+# Wraps existing export scripts; does not rewrite them.
+# Do NOT add training/results or LoRA adapters as outs (ADR-009 / ADR-011).
+
+stages:
+  export-llm:
+    cmd: >-
+      env PYTHONHASHSEED=0 models/.venv/bin/python models/scripts/export_llm.py
+    deps:
+      - models/scripts/export_llm.py
+      - models/scripts/common.py
+      - models/pins.json
+      - models/scripts/requirements.txt
+    outs:
+      - models/artifacts/llm/gpt2-small/model.safetensors:
+          persist: true
+
+  export-vision:
+    cmd: >-
+      env PYTHONHASHSEED=0 models/.venv/bin/python models/scripts/export_vision.py
+    deps:
+      - models/scripts/export_vision.py
+      - models/scripts/common.py
+      - models/pins.json
+      - models/scripts/requirements.txt
+    outs:
+      - models/artifacts/vision/resnet18/model.onnx:
+          persist: true

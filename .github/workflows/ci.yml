@@ -50,6 +50,7 @@ jobs:
       fsdp_ddp_gate: ${{ steps.filter.outputs.fsdp_ddp_gate }}
       deepspeed_gate: ${{ steps.filter.outputs.deepspeed_gate }}
       lora_peft_gate: ${{ steps.filter.outputs.lora_peft_gate }}
+      dvc_gate: ${{ steps.filter.outputs.dvc_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +64,8 @@ jobs:
               - 'docker-compose.yml'
               - 'training/**'
               - 'contracts/training-job-contract/**'
+              - 'dvc.yaml'
+              - 'dvc.lock'
             security_gate:
               - '**/Dockerfile*'
               - 'gateway/**'
@@ -170,6 +173,18 @@ jobs:
               - 'serving/bentoml/resource-requirements-lora-demo.json'
               - 'serving/bentoml/tests/test_lora_logits_delta.py'
               - 'docs/adr/011-lora-peft-adapter-serving-integration.md'
+            dvc_gate:
+              - 'dvc.yaml'
+              - 'dvc.lock'
+              - '.dvc/**'
+              - 'models/scripts/*dvc*'
+              - 'models/scripts/export_llm.py'
+              - 'models/scripts/export_vision.py'
+              - 'models/scripts/verify_manifest.py'
+              - 'models/pins.json'
+              - 'models/MANIFEST.md'
+              - 'docs/adr/012-data-versioning-with-dvc.md'
+              - 'docs/runbooks/dvc-remote.md'
 
   lint:
     name: Lint
@@ -204,8 +219,13 @@ jobs:
           test -f docs/adr/009-gpu-cost-safety-extends-to-training.md
           test -f docs/adr/010-unified-training-job-contract.md
           test -f docs/adr/011-lora-peft-adapter-serving-integration.md
+          test -f docs/adr/012-data-versioning-with-dvc.md
           test -f models/MANIFEST.md
           test -f models/pins.json
+          test -f dvc.yaml
+          test -f dvc.lock
+          test -f models/scripts/verify_dvc_manifest.py
+          test -f docs/runbooks/dvc-remote.md
           test -f contracts/training-job-contract/openapi.yaml
           test -f contracts/training-job-contract/schemas/lora-fine-tune-spec.schema.json
           test -f training/ray-train/train.py
@@ -1216,6 +1236,39 @@ jobs:
           . training/fsdp-ddp/lora/.venv/bin/activate
           python training/fsdp-ddp/lora/train_lora.py --output-dir training/results/lora-demo
           pytest -q training/fsdp-ddp/lora/tests serving/bentoml/tests/test_lora_logits_delta.py
+
+  dvc-repro:
+    name: DVC · repro + clean status + MANIFEST cross-check
+    needs: changes
+    if: needs.changes.outputs.dvc_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install export + DVC toolchains
+        run: |
+          python -m pip install -U pip
+          python -m venv models/.venv
+          models/.venv/bin/pip install -r models/scripts/requirements.txt
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m venv models/.venv-dvc
+          models/.venv-dvc/bin/pip install -r models/scripts/requirements-dvc.txt
+          mkdir -p .dvc-remote
+      - name: dvc repro + status clean + cross-validate sha256sums/MANIFEST
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          models/.venv-dvc/bin/dvc repro
+          status="$(models/.venv-dvc/bin/dvc status)"
+          echo "$status"
+          echo "$status" | grep -q 'Data and pipelines are up to date'
+          # Lock must stay byte-stable under PYTHONHASHSEED=0 (phase-18 lesson).
+          git diff --exit-code dvc.lock
+          PYTHONPATH=models/scripts models/.venv-dvc/bin/python models/scripts/verify_dvc_manifest.py
+          PYTHONPATH=models/scripts models/.venv/bin/python models/scripts/verify_manifest.py
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu / cost-token / training)

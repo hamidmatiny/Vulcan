@@ -19,6 +19,7 @@ ADR_COST_TOKEN="008-self-hosted-cost-per-token-assumptions.md"
 ADR_TRAINING_GPU_COST="009-gpu-cost-safety-extends-to-training.md"
 ADR_TRAINING_CONTRACT="010-unified-training-job-contract.md"
 ADR_LORA_PEFT="011-lora-peft-adapter-serving-integration.md"
+ADR_DVC="012-data-versioning-with-dvc.md"
 
 CHANGED_FILES=""
 if [[ -n "${ADR_GATE_CHANGED_FILES:-}" ]]; then
@@ -31,7 +32,7 @@ elif [[ -n "${GITHUB_BASE_REF:-}" ]]; then
 fi
 
 if [[ -z "${CHANGED_FILES}" ]]; then
-  CHANGED_FILES="$(git ls-files contracts gpu-infra autoscaling gateway serving/vllm/gpu-variants serving/triton/tensorrt-llm observability/gpu-metrics observability/cost-exporter/gpu-hour-assumptions.json training || true)"
+  CHANGED_FILES="$(git ls-files contracts gpu-infra autoscaling gateway serving/vllm/gpu-variants serving/triton/tensorrt-llm observability/gpu-metrics observability/cost-exporter/gpu-hour-assumptions.json training dvc.yaml dvc.lock .dvc models/scripts docs/adr/012-data-versioning-with-dvc.md docs/runbooks/dvc-remote.md || true)"
 fi
 
 touched_contracts=0
@@ -44,6 +45,7 @@ touched_advanced_gpu=0
 touched_cost_token=0
 touched_training=0
 touched_lora=0
+touched_dvc=0
 
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
@@ -85,6 +87,11 @@ while IFS= read -r path; do
   case "$path" in
     training/fsdp-ddp/lora|training/fsdp-ddp/lora/*|contracts/training-job-contract/schemas/lora-*|contracts/training-job-contract/examples/lora-*|serving/bentoml/resource-requirements-lora-demo.json|serving/bentoml/tests/test_lora_logits_delta.py|docs/adr/011-lora-peft-adapter-serving-integration.md)
       touched_lora=1
+      ;;
+  esac
+  case "$path" in
+    dvc.yaml|dvc.lock|.dvc|.dvc/*|models/scripts/*dvc*|docs/adr/012-data-versioning-with-dvc.md|docs/runbooks/dvc-remote.md)
+      touched_dvc=1
       ;;
   esac
 done <<< "$CHANGED_FILES"
@@ -144,11 +151,15 @@ if [[ "$touched_lora" -eq 1 ]]; then
   check_adr "training/fsdp-ddp/lora/|lora schemas|bentoml lora" "$ADR_LORA_PEFT"
 fi
 
-if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 && "$touched_autoscaling" -eq 0 && "$touched_gateway" -eq 0 && "$touched_advanced_gpu" -eq 0 && "$touched_cost_token" -eq 0 && "$touched_training" -eq 0 && "$touched_lora" -eq 0 ]]; then
+if [[ "$touched_dvc" -eq 1 ]]; then
+  check_adr "dvc.yaml|.dvc/|models/scripts/*dvc*" "$ADR_DVC"
+fi
+
+if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 && "$touched_autoscaling" -eq 0 && "$touched_gateway" -eq 0 && "$touched_advanced_gpu" -eq 0 && "$touched_cost_token" -eq 0 && "$touched_training" -eq 0 && "$touched_lora" -eq 0 && "$touched_dvc" -eq 0 ]]; then
   echo "ADR gate skip: no changes under gated paths"
 fi
 
-if [[ "$touched_contracts" -eq 1 || "$touched_gpu_infra" -eq 1 || "$touched_autoscaling" -eq 1 || "$touched_gateway" -eq 1 || "$touched_advanced_gpu" -eq 1 || "$touched_cost_token" -eq 1 || "$touched_training" -eq 1 || "$touched_lora" -eq 1 ]]; then
+if [[ "$touched_contracts" -eq 1 || "$touched_gpu_infra" -eq 1 || "$touched_autoscaling" -eq 1 || "$touched_gateway" -eq 1 || "$touched_advanced_gpu" -eq 1 || "$touched_cost_token" -eq 1 || "$touched_training" -eq 1 || "$touched_lora" -eq 1 || "$touched_dvc" -eq 1 ]]; then
   if [[ ! -f "${ADR_DIR}/index.md" ]]; then
     echo "ADR gate FAIL: ${ADR_DIR}/index.md is missing"
     fail=1
