@@ -1,0 +1,174 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Vulcan CPU-mode serving observability. LIVE panels scrape phase-0 /metrics + cost-exporter. GPU panels are PLACEHOLDER (ADR-002).",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "text",
+      "title": "Live vs placeholder (ADR-002)",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "**LIVE in CPU compose:** latency percentiles, throughput, error rate (`vulcan_infer_*` from backends + gateway), contract `/health` probes, cost/latency gauges from `benchmark/results/*.json` + `bedrock-gateway/pricing-reference.json` (same files as gateway routing).\n\n**PLACEHOLDER (not real GPU):** GPU utilization panels use `vulcan_gpu_utilization_ratio{data_source=\"placeholder_cpu_compose\"}`. Replace after a documented GPU run under `docs/benchmarks/`."
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "LIVE · Infer latency p95 (from histogram)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "spanNulls": false }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (backend, le) (rate(vulcan_infer_latency_seconds_bucket[5m])))",
+          "legendFormat": "{{backend}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "LIVE · Throughput (requests/s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (backend) (rate(vulcan_infer_requests_total{status=\"ok\"}[5m]))",
+          "legendFormat": "{{backend}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "LIVE · Error rate",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (backend) (rate(vulcan_infer_requests_total{status=\"error\"}[5m])) / clamp_min(sum by (backend) (rate(vulcan_infer_requests_total[5m])), 1e-9)",
+          "legendFormat": "{{backend}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "LIVE · Contract /health probe success",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "OK", "color": "green" } } }
+          ],
+          "max": 1,
+          "min": 0
+        }
+      },
+      "targets": [
+        {
+          "expr": "probe_success{job=\"vulcan-health\"}",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "LIVE · Routing catalog latency p95 (benchmark/pricing files)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "min": 0 },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "displayMode": "gradient", "orientation": "horizontal" },
+      "targets": [
+        {
+          "expr": "vulcan_routing_latency_p95_ms",
+          "legendFormat": "{{backend}} ({{source}})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "LIVE · Estimated cost / inference (Bedrock pricing-reference only)",
+      "description": "Self-hosted backends have no $/1k in-repo — panels stay empty for them (same honesty as gateway ADR-006).",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "currencyUSD", "decimals": 6 },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "displayMode": "gradient", "orientation": "horizontal" },
+      "targets": [
+        {
+          "expr": "vulcan_estimated_cost_per_inference_usd",
+          "legendFormat": "{{backend}} / {{model_id}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "PLACEHOLDER · GPU utilization (CPU compose mock — ADR-002)",
+      "description": "Series labeled data_source=placeholder_cpu_compose. Not from DCGM or real GPU runs.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "vulcan_gpu_utilization_ratio{data_source=\"placeholder_cpu_compose\"}",
+          "legendFormat": "{{backend}} {{gpu}} (PLACEHOLDER)",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["vulcan", "serving", "cpu"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Vulcan Serving (CPU compose)",
+  "uid": "vulcan-serving-cpu",
+  "version": 1,
+  "weekStart": ""
+}

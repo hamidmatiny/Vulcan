@@ -49,6 +49,12 @@ INFER_LATENCY = Histogram(
 )
 
 app = FastAPI(title="Vulcan BentoML contract surface", docs_url=None, redoc_url=None)
+try:
+    from vulcan_serving_common.otel import instrument_fastapi
+except ImportError:  # pragma: no cover — docker copies otel_setup.py
+    from otel_setup import instrument_fastapi  # type: ignore
+
+instrument_fastapi(app, BACKEND_NAME)
 _state_lock = threading.Lock()
 _ready = False
 _llm: LlmBundle | None = None

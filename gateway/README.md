@@ -48,3 +48,7 @@ VULCAN_BACKEND_URL=http://127.0.0.1:9007 make test-serving-common
 ## Circuit breaking
 
 Unhealthy `/health` → try next-ranked backend; `routing.fallback=true` and `attempts` list the unhealthy reason. Breaker opens after consecutive failures (see ADR-006).
+
+## Tracing
+
+When `OTEL_EXPORTER_OTLP_ENDPOINT` is set (compose: `http://otel-collector:4318`), the gateway emits OTLP spans and injects W3C `traceparent` on proxied `/v1/infer` calls so backends continue the same trace (see [`observability/`](../observability/)).

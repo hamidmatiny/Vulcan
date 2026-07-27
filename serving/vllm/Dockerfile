@@ -26,6 +26,7 @@ COPY serving/vllm/requirements.txt /app/serving/vllm/requirements.txt
 RUN pip install --no-cache-dir -r /app/serving/vllm/requirements.txt
 
 COPY serving/vllm /app/serving/vllm
+COPY serving/common/src/vulcan_serving_common/otel.py /app/serving/vllm/otel_setup.py
 
 WORKDIR /app/serving/vllm
 EXPOSE 9004

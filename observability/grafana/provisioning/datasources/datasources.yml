@@ -1,0 +1,25 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: vulcan-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s
+
+  - name: Tempo
+    uid: vulcan-tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      tracesToMetrics:
+        datasourceUid: vulcan-prometheus
+      serviceMap:
+        datasourceUid: vulcan-prometheus
+      nodeGraph:
+        enabled: true

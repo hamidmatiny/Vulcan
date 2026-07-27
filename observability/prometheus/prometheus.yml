@@ -1,0 +1,84 @@
+# Scrape phase-0 /metrics from Vulcan backends + health probes (same /health as gateway CB).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    stack: vulcan
+    runtime_mode: cpu
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: bentoml
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["bentoml:9000"]
+        labels:
+          vulcan_backend: bentoml
+
+  - job_name: ray-serve
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["ray-serve:9002"]
+        labels:
+          vulcan_backend: ray-serve
+
+  - job_name: triton
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["triton:9003"]
+        labels:
+          vulcan_backend: triton
+
+  - job_name: vllm
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["vllm:9004"]
+        labels:
+          vulcan_backend: vllm
+
+  - job_name: gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["gateway:9007"]
+        labels:
+          vulcan_backend: gateway
+
+  - job_name: cost-exporter
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["cost-exporter:9100"]
+        labels:
+          vulcan_component: cost-exporter
+
+  # Contract /health semantics (status==ok) — same probe the gateway circuit breaker uses.
+  - job_name: vulcan-health
+    metrics_path: /probe
+    params:
+      module: [vulcan_health]
+    static_configs:
+      - targets:
+          - http://bentoml:9000/health
+          - http://ray-serve:9002/health
+          - http://triton:9003/health
+          - http://vllm:9004/health
+          - http://gateway:9007/health
+        labels:
+          probe_type: contract_health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

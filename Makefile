@@ -1,6 +1,7 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
-	test-checkpointing test-sagemaker test-bedrock test-gateway lint \
+	test-checkpointing test-sagemaker test-bedrock test-gateway \
+	up-observability lint \
 	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export \
 	models-verify triton-prepare wait-for-health validate-kserve \
@@ -28,6 +29,9 @@ RAY_SERVE_PORT ?= 9002
 TRITON_PORT ?= 9003
 VLLM_PORT ?= 9004
 GATEWAY_PORT ?= 9007
+PROMETHEUS_PORT ?= 9008
+GRAFANA_PORT ?= 9009
+TEMPO_PORT ?= 9010
 # Poll loop mirrors CI health-wait (96 × 5s ≈ 8 min).
 HEALTH_WAIT_RETRIES ?= 96
 HEALTH_WAIT_SLEEP_SECS ?= 5
@@ -37,6 +41,10 @@ help: ## Show targets
 
 up: triton-prepare ## Start local stack (:9000/:9002/:9003/:9004; CPU-only)
 	$(COMPOSE) up -d --build --wait bentoml ray-serve triton vllm
+
+up-observability: ## Backends + gateway + Prometheus/Grafana/Tempo (:9008/:9009/:9010)
+	$(COMPOSE) up -d --build --wait bentoml ray-serve gateway \
+		otel-collector tempo prometheus alertmanager blackbox cost-exporter grafana
 
 down: ## Stop local stack
 	$(COMPOSE) down

@@ -25,6 +25,8 @@ Training→serving loop: [`pipelines/kubeflow/`](./pipelines/kubeflow/) (KFP + T
 
 Routing gateway: [`gateway/`](./gateway/) on **:9007** (ADR-006; recorded benchmarks + Bedrock pricing; explainable fallback).
 
+Observability: [`observability/`](./observability/) — Prometheus **:9008**, Grafana **:9009**, Tempo **:9010** (`make up-observability`).
+
 ---
 
 ## Architecture (north star)

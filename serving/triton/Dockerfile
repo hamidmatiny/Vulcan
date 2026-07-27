@@ -30,6 +30,7 @@ COPY serving/triton/requirements.txt /app/serving/triton/requirements.txt
 RUN pip install --no-cache-dir -r /app/serving/triton/requirements.txt
 
 COPY serving/triton /app/serving/triton
+COPY serving/common/src/vulcan_serving_common/otel.py /app/serving/triton/otel_setup.py
 COPY models/artifacts/ /models/
 
 ENV VULCAN_TOKENIZER_DIR=/models/llm/gpt2-small \

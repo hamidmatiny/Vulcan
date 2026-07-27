@@ -13,6 +13,7 @@ import (
 
 	"github.com/hamidmatiny/Vulcan/gateway/internal/breaker"
 	"github.com/hamidmatiny/Vulcan/gateway/internal/catalog"
+	"github.com/hamidmatiny/Vulcan/gateway/internal/otel"
 	"github.com/hamidmatiny/Vulcan/gateway/internal/router"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -39,9 +40,12 @@ func New(r *router.Router, resourcesPath string) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		Router:      r,
-		Resources:   res,
-		ProxyClient: &http.Client{Timeout: 120 * time.Second},
+		Router: r,
+		Resources: res,
+		ProxyClient: &http.Client{
+			Timeout:   120 * time.Second,
+			Transport: otel.Transport(http.DefaultTransport),
+		},
 	}
 	s.ready.Store(true)
 	return s, nil
@@ -143,6 +147,7 @@ func (s *Server) handleInfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	proxyReq.Header.Set("Content-Type", "application/json")
+	otel.InjectTraceHeaders(r.Context(), proxyReq)
 	resp, err := s.ProxyClient.Do(proxyReq)
 	if err != nil {
 		s.Router.Breaker.Failure(selected.Name)

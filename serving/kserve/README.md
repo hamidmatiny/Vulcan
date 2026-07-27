@@ -13,6 +13,7 @@ This phase is **not** another docker-compose backend. There is no host port in `
 | Scaling | Framework replicas (Bento/Ray) or process count | Knative Serverless **or** raw Deployment + HPA (`deploymentMode`) |
 | Rollouts | Rebuild/restart compose service | `canaryTrafficPercent` between revisions |
 | CI | Live CPU container + conformance + k6 | `helm template` + kubeconform + conftest — **no apply** |
+| Metrics / traces | Process exposes `/metrics`; OTel when `OTEL_*` set | Scrape the **scheduled adapter** Pod (triton/vllm shim). No separate kserve `/metrics` binary — see [`observability/`](../../observability/) |
 
 ### InferenceService / InferenceGraph mental model
 

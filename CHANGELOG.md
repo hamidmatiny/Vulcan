@@ -4,6 +4,14 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 14 — Observability (tracing, metrics, cost dashboards)
+
+- `observability/`: Prometheus (:9008), Grafana (:9009), Tempo (:9010), OTel collector, Alertmanager, blackbox
+- OTel instrumentation on gateway + bentoml/ray-serve/triton/vllm (end-to-end traces via gateway propagation)
+- Scrapes existing phase-0 `/metrics`; cost-exporter reuses benchmark + Bedrock pricing-reference (ADR-006 sources)
+- Grafana dashboard labels LIVE vs PLACEHOLDER GPU panels (ADR-002); health + error-rate alerts
+- CI path-filtered smoke: targets up + dashboard query + Tempo trace
+
 ### Phase 13 — Routing gateway and benchmark-driven backend selection
 
 - `gateway/`: Go router on **:9007**; selects using `benchmark/results/*.json` + Bedrock pricing-reference

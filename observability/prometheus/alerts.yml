@@ -1,0 +1,38 @@
+groups:
+  - name: vulcan-backend-health
+    rules:
+      - alert: VulcanBackendHealthDown
+        expr: probe_success{job="vulcan-health"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vulcan backend health failed ({{ $labels.instance }})"
+          description: >-
+            Blackbox probe of contract GET /health did not see HTTP 200 with
+            status=="ok" (same semantics as gateway circuit breaker). ADR-002 CPU stack.
+
+      - alert: VulcanBackendScrapeDown
+        expr: up{job=~"bentoml|ray-serve|triton|vllm|gateway"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus cannot scrape {{ $labels.job }}"
+          description: "Target {{ $labels.instance }} is down or /metrics unreachable."
+
+  - name: vulcan-error-rate
+    rules:
+      - alert: VulcanElevatedInferErrorRate
+        expr: |
+          (
+            sum by (backend) (rate(vulcan_infer_requests_total{status="error"}[5m]))
+            /
+            clamp_min(sum by (backend) (rate(vulcan_infer_requests_total[5m])), 1e-9)
+          ) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated /v1/infer error rate on {{ $labels.backend }}"
+          description: "Error ratio > 10% over 5m (phase-0 vulcan_infer_requests_total)."

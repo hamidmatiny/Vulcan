@@ -35,6 +35,12 @@ LLM_MODEL_ID = "reference-tiny-llm"
 RESOURCES_PATH = Path(__file__).resolve().parents[1] / "resource-requirements.json"
 
 app = FastAPI(title="Vulcan vLLM contract shim", docs_url=None, redoc_url=None)
+try:
+    from vulcan_serving_common.otel import instrument_fastapi
+except ImportError:  # pragma: no cover
+    from otel_setup import instrument_fastapi  # type: ignore
+
+instrument_fastapi(app, BACKEND_NAME)
 
 _registry = CollectorRegistry()
 _infer_requests = Counter(

@@ -20,6 +20,9 @@ env:
   VULCAN_TRITON_PORT: "9003"
   VULCAN_VLLM_PORT: "9004"
   VULCAN_GATEWAY_PORT: "9007"
+  VULCAN_PROMETHEUS_PORT: "9008"
+  VULCAN_GRAFANA_PORT: "9009"
+  VULCAN_TEMPO_PORT: "9010"
 
 jobs:
   changes:
@@ -37,6 +40,7 @@ jobs:
       bedrock_gate: ${{ steps.filter.outputs.bedrock_gate }}
       kubeflow_gate: ${{ steps.filter.outputs.kubeflow_gate }}
       gateway_gate: ${{ steps.filter.outputs.gateway_gate }}
+      observability_gate: ${{ steps.filter.outputs.observability_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +74,11 @@ jobs:
               - 'benchmark/results/**'
               - 'bedrock-gateway/pricing-reference.json'
               - 'contracts/**'
+            observability_gate:
+              - 'observability/**'
+              - 'gateway/internal/otel/**'
+              - 'serving/common/src/vulcan_serving_common/otel.py'
+              - 'docker-compose.yml'
             bentoml_gate:
               - 'serving/bentoml/**'
               - 'contracts/**'
@@ -139,15 +148,23 @@ jobs:
           grep -q 'VULCAN_TRITON_PORT:-9003' docker-compose.yml
           grep -q 'VULCAN_VLLM_PORT:-9004' docker-compose.yml
           grep -q 'VULCAN_GATEWAY_PORT:-9007' docker-compose.yml
+          grep -q 'VULCAN_PROMETHEUS_PORT:-9008' docker-compose.yml
+          grep -q 'VULCAN_GRAFANA_PORT:-9009' docker-compose.yml
+          grep -q 'VULCAN_TEMPO_PORT:-9010' docker-compose.yml
           grep -q '9002' .cursor/rules/vulcan-foundations.mdc
           grep -q '9003' .cursor/rules/vulcan-foundations.mdc
           grep -q '9004' .cursor/rules/vulcan-foundations.mdc
           grep -q '9005' .cursor/rules/vulcan-foundations.mdc
           grep -q '9006' .cursor/rules/vulcan-foundations.mdc
           grep -q '9007' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9008' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9009' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9010' .cursor/rules/vulcan-foundations.mdc
           grep -qE 'phase-N:|fix\(<component>\)' .cursor/rules/vulcan-foundations.mdc
           test -f serving/kserve/helm/Chart.yaml
           test -f docs/runbooks/kserve-local-kind.md
+          test -f observability/prometheus/prometheus.yml
+          test -f observability/grafana/dashboards/vulcan-serving.json
 
   unit-tests:
     name: Unit tests · contracts
@@ -777,6 +794,57 @@ jobs:
         with:
           name: gateway-cpu-benchmark
           path: benchmark/results/gateway-cpu.json
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  observability:
+    name: Observability · scrape + dashboard query + trace smoke
+    needs: changes
+    if: needs.changes.outputs.observability_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Export pinned reference models (CPU)
+        run: |
+          python -m pip install -U pip
+          python -m venv models/.venv
+          models/.venv/bin/pip install -r models/scripts/requirements.txt
+          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          cd models/scripts && ../.venv/bin/python export_llm.py
+          cd models/scripts && ../.venv/bin/python export_vision.py
+          cd models/scripts && ../.venv/bin/python verify_manifest.py
+      - name: Build + start bentoml, ray-serve, gateway, obs stack
+        run: |
+          docker compose build bentoml ray-serve gateway cost-exporter
+          docker compose up -d bentoml ray-serve gateway \
+            otel-collector tempo prometheus alertmanager blackbox cost-exporter grafana
+      - name: Wait for gateway + prometheus
+        run: |
+          make wait-for-health WAIT_PORT=${{ env.VULCAN_GATEWAY_PORT }}
+          for i in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:${VULCAN_PROMETHEUS_PORT}/-/ready" >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "prometheus not ready" >&2
+          exit 1
+      - name: Observability smoke (targets + query + Tempo trace)
+        run: |
+          chmod +x observability/scripts/ci_smoke.sh
+          PROM_URL="http://127.0.0.1:${VULCAN_PROMETHEUS_PORT}" \
+          GRAFANA_URL="http://127.0.0.1:${VULCAN_GRAFANA_PORT}" \
+          GATEWAY_URL="http://127.0.0.1:${VULCAN_GATEWAY_PORT}" \
+          TEMPO_URL="http://127.0.0.1:${VULCAN_TEMPO_PORT}" \
+          bash observability/scripts/ci_smoke.sh
       - name: Tear down
         if: always()
         run: docker compose down -v

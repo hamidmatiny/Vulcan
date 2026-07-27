@@ -40,6 +40,12 @@ BACKEND_VERSION = "0.3.0"
 RESOURCES_PATH = Path(__file__).resolve().parent / "resource-requirements.json"
 
 api = FastAPI(title="Vulcan Ray Serve contract surface", docs_url=None, redoc_url=None)
+try:
+    from vulcan_serving_common.otel import instrument_fastapi
+except ImportError:  # pragma: no cover
+    from otel_setup import instrument_fastapi  # type: ignore
+
+instrument_fastapi(api, BACKEND_NAME)
 
 
 def _runtime_mode() -> str:

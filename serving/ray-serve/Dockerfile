@@ -32,6 +32,7 @@ RUN pip install --no-cache-dir -r /app/serving/ray-serve/requirements.txt \
  && pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 
 COPY serving/ray-serve /app/serving/ray-serve
+COPY serving/common/src/vulcan_serving_common/otel.py /app/serving/ray-serve/otel_setup.py
 COPY models/artifacts/ /models/
 
 WORKDIR /app/serving/ray-serve

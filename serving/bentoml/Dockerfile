@@ -29,6 +29,7 @@ RUN pip install --no-cache-dir -r /app/serving/bentoml/requirements.txt \
  && pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 
 COPY serving/bentoml /app/serving/bentoml
+COPY serving/common/src/vulcan_serving_common/otel.py /app/serving/bentoml/otel_setup.py
 COPY models/artifacts/ /models/
 
 WORKDIR /app/serving/bentoml

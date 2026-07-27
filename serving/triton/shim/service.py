@@ -50,6 +50,12 @@ PREPROCESS_PATH = ROOT / "models" / "artifacts" / "vision" / "resnet18" / "prepr
 TOKENIZER_PATH = ROOT / "models" / "artifacts" / "llm" / "gpt2-small"
 
 app = FastAPI(title="Vulcan Triton contract shim", docs_url=None, redoc_url=None)
+try:
+    from vulcan_serving_common.otel import instrument_fastapi
+except ImportError:  # pragma: no cover
+    from otel_setup import instrument_fastapi  # type: ignore
+
+instrument_fastapi(app, BACKEND_NAME)
 
 _registry = CollectorRegistry()
 _infer_requests = Counter(

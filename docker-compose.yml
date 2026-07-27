@@ -10,9 +10,16 @@
 #   9005 — optional KServe port-forward (no compose service)
 #   9006 — bedrock-gateway optional local shim (no compose; moto in CI)
 #   9007 — gateway (routing; ADR-006)
-#   9008–9098 — reserved for later backends / observability
+#   9008 — prometheus
+#   9009 — grafana
+#   9010 — tempo (trace query; OTLP stays on docker network)
+#   9011–9098 — reserved
 
 name: vulcan
+
+x-otel-env: &otel-env
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  OTEL_TRACES_SAMPLER: parentbased_always_on
 
 services:
   bentoml:
@@ -25,6 +32,7 @@ services:
     environment:
       VULCAN_RUNTIME_MODE: cpu
       VULCAN_MODELS_DIR: /models
+      <<: *otel-env
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
       interval: 10s
@@ -46,6 +54,7 @@ services:
       PORT: "9002"
       HOST: "0.0.0.0"
       RAY_NUM_CPUS: "2"
+      <<: *otel-env
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9002/health"]
       interval: 10s
@@ -90,6 +99,7 @@ services:
       TRITON_WAIT_SECONDS: "360"
       PORT: "9003"
       HOST: "0.0.0.0"
+      <<: *otel-env
     depends_on:
       triton-engine:
         condition: service_healthy
@@ -136,6 +146,7 @@ services:
       VLLM_WAIT_SECONDS: "300"
       PORT: "9004"
       HOST: "0.0.0.0"
+      <<: *otel-env
     depends_on:
       vllm-engine:
         condition: service_healthy
@@ -165,6 +176,7 @@ services:
       VULCAN_TRITON_URL: http://triton:9003
       VULCAN_VLLM_URL: http://vllm:9004
       # kserve/sagemaker/bedrock URLs intentionally empty in local compose (see gateway/README)
+      <<: *otel-env
     volumes:
       - ./benchmark/results:/benchmarks:ro
       - ./bedrock-gateway/pricing-reference.json:/pricing/pricing-reference.json:ro
@@ -173,12 +185,98 @@ services:
         condition: service_healthy
       ray-serve:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9007/health"]
       interval: 10s
       timeout: 5s
       retries: 18
       start_period: 30s
+    restart: unless-stopped
+
+  # --- Observability (phase-14): Prometheus :9008 · Grafana :9009 · Tempo :9010 ---
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.109.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./observability/otel/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - tempo
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    ports:
+      - "${VULCAN_TEMPO_PORT:-9010}:3200"
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "${VULCAN_PROMETHEUS_PORT:-9008}:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    depends_on:
+      - alertmanager
+      - blackbox
+      - cost-exporter
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    restart: unless-stopped
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    volumes:
+      - ./observability/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    restart: unless-stopped
+
+  cost-exporter:
+    build:
+      context: .
+      dockerfile: observability/cost-exporter/Dockerfile
+    image: vulcan-cost-exporter:cpu
+    environment:
+      VULCAN_RUNTIME_MODE: cpu
+      VULCAN_BENCHMARK_DIR: /benchmarks
+      VULCAN_BEDROCK_PRICING: /pricing/pricing-reference.json
+      PORT: "9100"
+    volumes:
+      - ./benchmark/results:/benchmarks:ro
+      - ./bedrock-gateway/pricing-reference.json:/pricing/pricing-reference.json:ro
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "${VULCAN_GRAFANA_PORT:-9009}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: light
+      GF_FEATURE_TOGGLES_ENABLE: traceqlEditor
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - tempo
     restart: unless-stopped
 
   # Phase-1 trivial reference server (no real weights) — optional.
