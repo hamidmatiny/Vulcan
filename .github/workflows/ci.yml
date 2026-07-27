@@ -15,6 +15,8 @@ env:
   PYTHON_VERSION: "3.12"
   COVERAGE_MIN: "65"
   VULCAN_RUNTIME_MODE: cpu
+  # Byte-reproducible ONNX export (models/scripts/export_vision.py); must be set before the interpreter starts.
+  PYTHONHASHSEED: "0"
   VULCAN_BENTOML_PORT: "9000"
   VULCAN_RAY_SERVE_PORT: "9002"
   VULCAN_TRITON_PORT: "9003"
@@ -310,14 +312,25 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sudo sh -s -- -b /usr/local/bin v0.56.2
-          trivy --version
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: v0.56.2
+          cache: "true"
       - name: Install Syft
+        id: syft
+        uses: anchore/sbom-action/download-syft@v0.17.9
+        with:
+          syft-version: v1.14.1
+      - name: Confirm Trivy + Syft on PATH
         run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-            | sudo sh -s -- -b /usr/local/bin v1.14.1
+          # download-syft exposes the binary via outputs.cmd; put its dir on PATH for scan-image.sh
+          SYFT_CMD="${{ steps.syft.outputs.cmd }}"
+          echo "$(dirname "${SYFT_CMD}")" >> "$GITHUB_PATH"
+          export PATH="$(dirname "${SYFT_CMD}"):${PATH}"
+          if [[ "$(basename "${SYFT_CMD}")" != "syft" ]]; then
+            ln -sfn "${SYFT_CMD}" "$(dirname "${SYFT_CMD}")/syft"
+          fi
+          trivy --version
           syft version
       - name: Export pinned reference models (CPU)
         run: |
@@ -614,7 +627,7 @@ jobs:
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
           (cd models/scripts && ../.venv/bin/python export_llm.py)
-          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py --models reference-tiny-llm)
       - name: Build + start vllm stack (compose :9004)
         run: |
           docker compose build vllm-engine vllm

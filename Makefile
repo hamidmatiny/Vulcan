@@ -261,9 +261,9 @@ models-export: ## Fetch/export pinned reference models (CPU)
 	$(PYTHON) -m venv $(MODELS_VENV)
 	$(MODELS_VENV)/bin/pip install -U pip
 	$(MODELS_VENV)/bin/pip install -r models/scripts/requirements.txt
-	cd models/scripts && ../.venv/bin/python export_llm.py
-	cd models/scripts && ../.venv/bin/python export_vision.py
-	cd models/scripts && ../.venv/bin/python write_manifest.py --require-artifacts
+	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/export_llm.py
+	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/export_vision.py
+	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/write_manifest.py --require-artifacts
 
 models-verify: ## Verify artifacts match MANIFEST.md
-	cd models/scripts && ../.venv/bin/python verify_manifest.py
+	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/verify_manifest.py

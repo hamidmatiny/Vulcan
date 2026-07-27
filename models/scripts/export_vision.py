@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import random
 import sys
 from pathlib import Path
 
@@ -13,6 +15,19 @@ import torchvision
 from torchvision.models import ResNet18_Weights
 
 from common import ARTIFACTS_ROOT, ensure_dir, load_pins, sha256_file, write_sidecar_hashes
+
+
+def _seed_for_reproducible_onnx() -> None:
+    """Stabilize ONNX graph/constant serialization across processes.
+
+    PYTHONHASHSEED must also be set in the process environment *before* the
+    interpreter starts (CI top-level env + Makefile models-export). Setting it
+    here is defense-in-depth for child libs that re-read the env var.
+    """
+    os.environ.setdefault("PYTHONHASHSEED", "0")
+    random.seed(0)
+    torch.manual_seed(0)
+    torch.set_num_threads(1)  # avoid nondeterministic reduction order in constant folding
 
 
 def main() -> int:
@@ -24,6 +39,8 @@ def main() -> int:
         help="Output directory (default: models/artifacts/vision/resnet18)",
     )
     args = parser.parse_args()
+
+    _seed_for_reproducible_onnx()
 
     pins = load_pins()
     spec = pins["models"]["reference-tiny-vision"]

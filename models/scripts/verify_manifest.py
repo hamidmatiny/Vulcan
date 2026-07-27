@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from pathlib import Path
@@ -11,6 +12,15 @@ from common import ARTIFACTS_ROOT, MANIFEST_PATH, load_pins, sha256_file
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--models",
+        default="",
+        help="Comma-separated model ids to verify (default: all pins).",
+    )
+    args = parser.parse_args()
+    wanted = {m.strip() for m in args.models.split(",") if m.strip()}
+
     pins = load_pins()
     if not MANIFEST_PATH.is_file():
         print(f"FAIL: {MANIFEST_PATH} missing", file=sys.stderr)
@@ -20,6 +30,8 @@ def main() -> int:
     fail = 0
 
     for model_id, spec in pins["models"].items():
+        if wanted and model_id not in wanted:
+            continue
         export = spec["export"]
         rel_dir = export["relative_dir"]
         artifact_dir = Path(__file__).resolve().parents[1] / rel_dir
@@ -56,6 +68,13 @@ def main() -> int:
             continue
 
         print(f"OK: {model_id} {primary.name} sha256={actual}")
+
+    if wanted:
+        known = set(pins["models"])
+        unknown = sorted(wanted - known)
+        if unknown:
+            print(f"FAIL: unknown model id(s): {', '.join(unknown)}")
+            fail = 1
 
     # Ensure artifact root exists for docs
     _ = ARTIFACTS_ROOT
