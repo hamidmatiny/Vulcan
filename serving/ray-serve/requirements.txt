@@ -1,8 +1,11 @@
 # CPU-only runtime for Vulcan Ray Serve adapter (ADR-002).
 # Install torch separately from the CPU wheel index (see Dockerfile / README).
 setuptools>=69,<82
-# CVE-2025-62593 fixed in 2.52.0; protobuf>=7 FieldDescriptor.label fix in 2.56.1.
-ray[serve]>=2.56.1,<2.58
+# CVE-2025-62593 fixed in 2.52.0. Stay <2.56 so we keep pickle-safe FastAPI/Starlette pins;
+# Ray 2.56+ requires fastapi>=0.133 which conflicts with those pins.
+ray[serve]>=2.52.0,<2.53
+# protobuf>=5/7 upb drops FieldDescriptor.label and breaks Ray Serve <2.56.1.
+protobuf>=4.25.1,<5
 # FastAPI/Starlette pins: newer Starlette embeds locks that Ray cannot pickle for @serve.ingress.
 fastapi>=0.110,<0.116
 starlette>=0.36,<0.38
