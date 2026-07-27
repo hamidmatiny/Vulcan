@@ -317,11 +317,12 @@ jobs:
         run: |
           # Authenticated release download — avoids unauthenticated GitHub API rate limits
           # that silently kill aquasecurity/trivy contrib/install.sh on shared runners.
+          # v0.56.2 is no longer published; pin a current Linux-64bit release asset.
           curl -sSfL \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/octet-stream" \
             -o /tmp/trivy.tgz \
-            "https://github.com/aquasecurity/trivy/releases/download/v0.56.2/trivy_0.56.2_Linux-64bit.tar.gz"
+            "https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_Linux-64bit.tar.gz"
           sudo tar -xzf /tmp/trivy.tgz -C /usr/local/bin trivy
           trivy --version
       - name: Install Syft
