@@ -229,6 +229,7 @@ services:
       - alertmanager
       - blackbox
       - cost-exporter
+      - synthetic-dcgm
     restart: unless-stopped
 
   alertmanager:
@@ -254,10 +255,20 @@ services:
       VULCAN_RUNTIME_MODE: cpu
       VULCAN_BENCHMARK_DIR: /benchmarks
       VULCAN_BEDROCK_PRICING: /pricing/pricing-reference.json
+      VULCAN_GPU_HOUR_ASSUMPTIONS: /app/gpu-hour-assumptions.json
       PORT: "9100"
     volumes:
       - ./benchmark/results:/benchmarks:ro
       - ./bedrock-gateway/pricing-reference.json:/pricing/pricing-reference.json:ro
+    restart: unless-stopped
+
+  synthetic-dcgm:
+    build:
+      context: .
+      dockerfile: observability/gpu-metrics/synthetic-dcgm/Dockerfile
+    image: vulcan-synthetic-dcgm:cpu
+    environment:
+      PORT: "9400"
     restart: unless-stopped
 
   grafana:

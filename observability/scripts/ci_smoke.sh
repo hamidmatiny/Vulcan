@@ -16,7 +16,7 @@ for _ in $(seq 1 60); do
 done
 curl -fsS "${PROM_URL}/-/ready" >/dev/null
 
-echo "==> assert scrape targets up (bentoml, ray-serve, gateway, cost-exporter)"
+echo "==> assert scrape targets up (bentoml, ray-serve, gateway, cost-exporter, synthetic-dcgm)"
 ok_targets=0
 for _ in $(seq 1 60); do
   if curl -fsS "${PROM_URL}/api/v1/targets?state=active" | python3 -c '
@@ -27,7 +27,7 @@ by_job = {}
 for t in active:
     job = t["labels"].get("job", "")
     by_job.setdefault(job, []).append(t.get("health"))
-need = ("bentoml", "ray-serve", "gateway", "cost-exporter")
+need = ("bentoml", "ray-serve", "gateway", "cost-exporter", "synthetic-dcgm")
 for job in need:
     healths = by_job.get(job) or []
     if not any(h == "up" for h in healths):
@@ -79,6 +79,44 @@ data = json.load(sys.stdin)
 assert data["data"]["result"], "expected vulcan_routing_latency_p95_ms from cost-exporter"
 print("OK cost-exporter", len(data["data"]["result"]), "series")
 '
+
+echo "==> cost-per-token series present (phase-17)"
+ok_cpt=0
+for _ in $(seq 1 30); do
+  if curl -fsS --get "${PROM_URL}/api/v1/query" \
+    --data-urlencode "query=vulcan_estimated_cost_usd_per_token" \
+    | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+assert data.get("status") == "success", data
+assert data["data"]["result"], "expected vulcan_estimated_cost_usd_per_token"
+print("OK cost-per-token", len(data["data"]["result"]), "series")
+'; then
+    ok_cpt=1
+    break
+  fi
+  sleep 2
+done
+[[ "${ok_cpt}" -eq 1 ]] || { echo "cost-per-token query empty" >&2; exit 1; }
+
+echo "==> synthetic DCGM util series present (LIVE-SYNTHETIC)"
+ok_gpu=0
+for _ in $(seq 1 30); do
+  if curl -fsS --get "${PROM_URL}/api/v1/query" \
+    --data-urlencode 'query=DCGM_FI_DEV_GPU_UTIL{data_source="synthetic_cpu_compose"}' \
+    | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+assert data.get("status") == "success", data
+assert data["data"]["result"], "expected synthetic DCGM_FI_DEV_GPU_UTIL"
+print("OK synthetic-dcgm", len(data["data"]["result"]), "series")
+'; then
+    ok_gpu=1
+    break
+  fi
+  sleep 2
+done
+[[ "${ok_gpu}" -eq 1 ]] || { echo "synthetic DCGM query empty" >&2; exit 1; }
 
 echo "==> Grafana health"
 curl -fsS "${GRAFANA_URL}/api/health" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("database")=="ok", d; print("OK grafana", d)'

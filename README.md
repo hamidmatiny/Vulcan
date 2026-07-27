@@ -17,6 +17,7 @@
 | [ADR-005](./docs/adr/005-spot-gpu-strategy.md) | Spot GPU strategy (cost, checkpoint contract, workload fit) |
 | [ADR-006](./docs/adr/006-routing-policy.md) | Routing policy (benchmark-driven selection + fallback) |
 | [ADR-007](./docs/adr/007-advanced-gpu-serving-techniques-scope.md) | Advanced GPU serving (quantization / speculative / TRT-LLM scope) |
+| [ADR-008](./docs/adr/008-self-hosted-cost-per-token-assumptions.md) | Self-hosted cost-per-token ($/GPU-hour assumptions) |
 
 Managed training/hosting comparison: [`pipelines/sagemaker/`](./pipelines/sagemaker/) (moto in CI; [manual runbook](./docs/runbooks/sagemaker-manual-run.md)).
 

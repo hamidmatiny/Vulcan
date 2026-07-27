@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "source": "static_reference_assumption",
+  "disclaimer": "These $/GPU-hour figures are STATIC ASSUMPTIONS for router/dashboard cost-per-token math — NOT live AWS Price List API fetches and NOT validated against a real cloud invoice. They will drift. Do not bill customers from this file. Instance types are exactly those declared in infra/terraform/environments/gpu-eks/main.tf (phase-7).",
+  "as_of": "2026-07",
+  "region_hint": "us-east-1 on-demand list-price ballpark; verify before decisions",
+  "methodology_adr": "docs/adr/008-self-hosted-cost-per-token-assumptions.md",
+  "assumed_tokens_per_request": 16,
+  "assumed_tokens_per_request_notes": "Matches typical short Vulcan k6 max_tokens used in CPU CI harnesses. Not measured token accounting from production.",
+  "default_instance_type_for_self_hosted_inference": "g5.xlarge",
+  "instance_types": {
+    "g5.xlarge": {
+      "usd_per_gpu_hour": 1.006,
+      "terraform_node_group": "gpu_inference",
+      "notes": "First instance type on phase-7 gpu_inference node group (A10G-class)."
+    },
+    "g5.2xlarge": {
+      "usd_per_gpu_hour": 1.212,
+      "terraform_node_group": "gpu_inference",
+      "notes": "Second instance type on phase-7 gpu_inference node group."
+    },
+    "p4d.24xlarge": {
+      "usd_per_gpu_hour": 32.7726,
+      "terraform_node_group": "gpu_mig_small|gpu_mig_large",
+      "notes": "Phase-7 MIG pools (A100-class). Cost-per-token for MIG slices needs further allocation policy — default self-hosted inference cost uses g5.xlarge."
+    }
+  }
+}

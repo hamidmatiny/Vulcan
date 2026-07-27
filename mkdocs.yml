@@ -58,7 +58,9 @@ nav:
       - "003 MIG partitioning": adr/003-mig-partitioning-strategy.md
       - "004 Kueue multi-tenant scheduling": adr/004-multi-tenant-gpu-scheduling-with-kueue.md
       - "005 Spot GPU strategy": adr/005-spot-gpu-strategy.md
+      - "006 Routing policy": adr/006-routing-policy.md
       - "007 Advanced GPU serving techniques": adr/007-advanced-gpu-serving-techniques-scope.md
+      - "008 Self-hosted cost-per-token assumptions": adr/008-self-hosted-cost-per-token-assumptions.md
   - Components:
       - Contracts: components/contracts.md
       - Model contract: components/model-contract.md

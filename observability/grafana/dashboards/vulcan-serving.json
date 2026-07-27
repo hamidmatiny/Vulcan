@@ -10,7 +10,7 @@
       }
     ]
   },
-  "description": "Vulcan CPU-mode serving observability. LIVE panels scrape phase-0 /metrics + cost-exporter. GPU panels are PLACEHOLDER (ADR-002).",
+  "description": "Vulcan CPU-mode serving observability. LIVE infer metrics + cost-per-token (ADR-006/008). GPU util is LIVE-SYNTHETIC DCGM-shaped sample data (not real hardware).",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -20,17 +20,17 @@
   "panels": [
     {
       "type": "text",
-      "title": "Live vs placeholder (ADR-002)",
-      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "title": "Live vs synthetic vs placeholder (ADR-002)",
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 0 },
       "options": {
         "mode": "markdown",
-        "content": "**LIVE in CPU compose:** latency percentiles, throughput, error rate (`vulcan_infer_*` from backends + gateway), contract `/health` probes, cost/latency gauges from `benchmark/results/*.json` + `bedrock-gateway/pricing-reference.json` (same files as gateway routing).\n\n**PLACEHOLDER (not real GPU):** GPU utilization panels use `vulcan_gpu_utilization_ratio{data_source=\"placeholder_cpu_compose\"}`. Replace after a documented GPU run under `docs/benchmarks/`."
+        "content": "**LIVE:** latency / throughput / error rate (`vulcan_infer_*`), contract `/health`, routing latency + **cost-per-token** from cost-exporter (`benchmark/results` + Bedrock pricing-reference + documented `$/GPU-hour` assumptions — ADR-008).\n\n**LIVE-SYNTHETIC (compose/CI):** GPU utilization via `DCGM_FI_DEV_GPU_UTIL{data_source=\"synthetic_cpu_compose\"}` — real scrape path, sample values, **not** NVIDIA hardware.\n\n**Not in compose:** real DCGM on phase-7 GPU pools (`observability/gpu-metrics/helm`). Still no PLACEHOLDER `vulcan_gpu_utilization_ratio` series."
       }
     },
     {
       "type": "timeseries",
       "title": "LIVE · Infer latency p95 (from histogram)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
       "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
       "fieldConfig": {
         "defaults": {
@@ -50,7 +50,7 @@
     {
       "type": "timeseries",
       "title": "LIVE · Throughput (requests/s)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
       "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "reqps" },
@@ -67,7 +67,7 @@
     {
       "type": "timeseries",
       "title": "LIVE · Error rate",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
       "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
@@ -84,7 +84,7 @@
     {
       "type": "stat",
       "title": "LIVE · Contract /health probe success",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
       "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
       "fieldConfig": {
@@ -107,7 +107,7 @@
     {
       "type": "bargauge",
       "title": "LIVE · Routing catalog latency p95 (benchmark/pricing files)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 21 },
       "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "ms", "min": 0 },
@@ -124,9 +124,9 @@
     },
     {
       "type": "bargauge",
-      "title": "LIVE · Estimated cost / inference (Bedrock pricing-reference only)",
-      "description": "Self-hosted backends have no $/1k in-repo — panels stay empty for them (same honesty as gateway ADR-006).",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "title": "LIVE · Estimated cost / inference",
+      "description": "Bedrock: pricing-reference 1k-in+1k-out. Self-hosted: ADR-008 (throughput × assumed tokens × $/GPU-hour).",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 21 },
       "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
       "fieldConfig": {
         "defaults": { "unit": "currencyUSD", "decimals": 6 },
@@ -142,19 +142,38 @@
       ]
     },
     {
-      "type": "timeseries",
-      "title": "PLACEHOLDER · GPU utilization (CPU compose mock — ADR-002)",
-      "description": "Series labeled data_source=placeholder_cpu_compose. Not from DCGM or real GPU runs.",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+      "type": "bargauge",
+      "title": "LIVE · Estimated cost per token (ADR-006/008)",
+      "description": "Bedrock: blend $/1k ÷ 1000. Self-hosted: ($/GPU-hour/3600) / (throughput_rps × assumed_tokens_per_request). Assumptions file is static_reference_assumption — not an invoice.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
       "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
       "fieldConfig": {
-        "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
+        "defaults": { "unit": "currencyUSD", "decimals": 9 },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "displayMode": "gradient", "orientation": "horizontal" },
+      "targets": [
+        {
+          "expr": "vulcan_estimated_cost_usd_per_token",
+          "legendFormat": "{{backend}} ({{instance_type}})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "LIVE-SYNTHETIC · GPU utilization (DCGM-shaped; not real hardware)",
+      "description": "DCGM_FI_DEV_GPU_UTIL from synthetic-dcgm exporter (data_source=synthetic_cpu_compose). Real DCGM: observability/gpu-metrics/helm on phase-7 pools.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
+      "datasource": { "type": "prometheus", "uid": "vulcan-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100 },
         "overrides": []
       },
       "targets": [
         {
-          "expr": "vulcan_gpu_utilization_ratio{data_source=\"placeholder_cpu_compose\"}",
-          "legendFormat": "{{backend}} {{gpu}} (PLACEHOLDER)",
+          "expr": "DCGM_FI_DEV_GPU_UTIL{data_source=\"synthetic_cpu_compose\"}",
+          "legendFormat": "gpu={{gpu}} (SYNTHETIC)",
           "refId": "A"
         }
       ]
@@ -169,6 +188,6 @@
   "timezone": "browser",
   "title": "Vulcan Serving (CPU compose)",
   "uid": "vulcan-serving-cpu",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

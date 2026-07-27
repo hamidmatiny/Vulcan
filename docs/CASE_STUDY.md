@@ -10,7 +10,7 @@ Per [ADR-002](adr/002-gpu-cost-safety-policy.md), automation **never** provision
 |------|-----------------------------------|
 | Serving adapters (bentoml, ray-serve, triton, vllm) | CPU Docker images + short k6 → `benchmark/results/*-cpu.json` |
 | Gateway | Routes using those recorded JSON files + Bedrock `pricing-reference.json` ([ADR-006](adr/006-routing-policy.md)) |
-| Observability | Scrapes `/metrics`, blackbox `/health`, OTel→Tempo; GPU dashboard series are **explicit placeholders** |
+| Observability | Scrapes `/metrics`, blackbox `/health`, OTel→Tempo; GPU util is **LIVE-SYNTHETIC** DCGM-shaped sample data in compose (real DCGM Helm under `observability/gpu-metrics/`) |
 | SageMaker / Bedrock | moto / fake credentials — no live AWS spend |
 | KServe, GPU Operator, MIG, Kueue, Karpenter, Kubeflow | `helm template` / `terraform validate|plan` / conftest — **no apply** |
 
@@ -36,7 +36,7 @@ These trees are written as deployable artifacts, not slides:
 | One API for every backend | ADR-001 + `contracts/model-contract` + conformance suite |
 | No silent GPU burn in CI | ADR-002 + compose `VULCAN_RUNTIME_MODE=cpu` + validate-only infra jobs |
 | Routing is explainable | ADR-006 + `routing` object on infer responses + `gateway/scripts/ci_fallback.sh` |
-| Cost panels reuse router data | `observability/cost-exporter` reads the same benchmark/pricing files as `gateway/internal/catalog` |
+| Cost panels reuse router data | `observability/cost-exporter` reads the same benchmark/pricing files as `gateway/internal/catalog`, plus ADR-008 `$/GPU-hour` assumptions for cost-per-token |
 | Coverage bar | `COVERAGE_MIN=65` on gated Python packages + `gateway/internal` Go coverage |
 
 ## How to judge the work in an interview

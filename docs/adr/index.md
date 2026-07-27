@@ -11,3 +11,4 @@ Short records of the biggest technology choices in Vulcan. Each ADR states the c
 | [005](005-spot-gpu-strategy.md) | Spot GPU strategy | Accepted |
 | [006](006-routing-policy.md) | Routing policy | Accepted |
 | [007](007-advanced-gpu-serving-techniques-scope.md) | Advanced GPU serving techniques scope | Accepted |
+| [008](008-self-hosted-cost-per-token-assumptions.md) | Self-hosted cost-per-token assumptions | Accepted |

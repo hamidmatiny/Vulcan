@@ -1,0 +1,25 @@
+# Snippet for cluster Prometheus (NOT merged into local docker-compose prometheus.yml).
+# Local/CI uses job synthetic-dcgm instead (DCGM-shaped sample metrics).
+#
+# Apply after DCGM Exporter is running on phase-7 GPU node pools.
+
+scrape_configs:
+  - job_name: vulcan-dcgm
+    metrics_path: /metrics
+    scrape_interval: 15s
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - gpu-operator  # adjust if your Operator release namespace differs
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app]
+        regex: nvidia-dcgm-exporter
+        action: keep
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        regex: metrics|gpu-metrics
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node
+      - target_label: vulcan_gpu_metrics
+        replacement: dcgm_real

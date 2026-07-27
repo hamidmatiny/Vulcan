@@ -4,6 +4,13 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 17 — Cost-per-token and GPU utilization tracking
+
+- `observability/gpu-metrics/`: real DCGM-exporter Helm values + cluster Prometheus scrape for phase-7 pools; synthetic DCGM-shaped exporter for compose/CI
+- Cost-exporter: `vulcan_estimated_cost_usd_per_token` from Bedrock `pricing-reference.json` and ADR-008 `$/GPU-hour` × benchmark throughput (phase-7 instance types only)
+- Grafana: cost-per-token + LIVE-SYNTHETIC GPU util panels; LIVE vs PLACEHOLDER table updated
+- [ADR-008](./docs/adr/008-self-hosted-cost-per-token-assumptions.md); KNOWN_GAPS #2 closed; CI smoke asserts cost-per-token + synthetic DCGM
+
 ### Phase 16 — Advanced GPU serving (v1.1.0 track)
 
 - Extended `serving/vllm/docs/gpu-mode.md`: continuous batching, PagedAttention vs CPU KV, speculative decoding pairs

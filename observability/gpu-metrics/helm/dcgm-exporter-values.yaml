@@ -1,0 +1,34 @@
+# Overlay / reference values for NVIDIA DCGM Exporter on Vulcan GPU pools.
+# Intended to be used with the GPU Operator chart (dcgmExporter) already enabled in
+# gpu-infra/gpu-operator/values-eks.yaml — OR with the standalone nvidia-dcgm-exporter chart.
+#
+# Targets phase-7 Terraform node labels/taints:
+#   vulcan.dev/gpu=true
+#   nvidia.com/gpu=true:NoSchedule
+#
+# CI: file presence + YAML parse only via docs/obs smoke — NEVER helm upgrade (ADR-002).
+
+dcgmExporter:
+  enabled: true
+  # Service scrapable by cluster Prometheus (see prometheus/scrape-dcgm-cluster.yaml).
+  service:
+    type: ClusterIP
+    port: 9400
+  # Schedule only onto Vulcan GPU pools (phase-7).
+  nodeSelector:
+    vulcan.dev/gpu: "true"
+    nvidia.com/gpu: "true"
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+  # Keep metrics aligned with what Grafana expects (GPU util + FB memory).
+  # Exact env keys vary by Operator chart version — verify against your pin.
+  env:
+    - name: DCGM_EXPORTER_LISTEN
+      value: ":9400"
+    - name: DCGM_EXPORTER_KUBERNETES
+      value: "true"
+
+# When using the standalone chart `nvidia/dcgm-exporter` instead of Operator subchart:
+# nodeSelector / tolerations above still apply; set service.port: 9400.

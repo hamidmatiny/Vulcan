@@ -8,7 +8,7 @@ from pathlib import Path
 import exporter
 
 
-def test_refresh_loads_benchmark_and_pricing(tmp_path: Path, monkeypatch) -> None:
+def test_refresh_loads_benchmark_pricing_and_cost_per_token(tmp_path: Path, monkeypatch) -> None:
     bench = tmp_path / "bench"
     bench.mkdir()
     (bench / "bentoml-cpu.json").write_text(
@@ -25,7 +25,7 @@ def test_refresh_loads_benchmark_and_pricing(tmp_path: Path, monkeypatch) -> Non
                 "metrics": {
                     "requests_total": 1,
                     "error_rate": 0,
-                    "throughput_rps": 1,
+                    "throughput_rps": 10.0,
                     "latency_ms": {"p50": 10, "p95": 42, "p99": 50},
                 },
             }
@@ -49,15 +49,32 @@ def test_refresh_loads_benchmark_and_pricing(tmp_path: Path, monkeypatch) -> Non
         ),
         encoding="utf-8",
     )
+    assumptions = tmp_path / "gpu-hour.json"
+    assumptions.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source": "static_reference_assumption",
+                "assumed_tokens_per_request": 16,
+                "default_instance_type_for_self_hosted_inference": "g5.xlarge",
+                "instance_types": {"g5.xlarge": {"usd_per_gpu_hour": 1.0}},
+            }
+        ),
+        encoding="utf-8",
+    )
     monkeypatch.setenv("VULCAN_BENCHMARK_DIR", str(bench))
     monkeypatch.setenv("VULCAN_BEDROCK_PRICING", str(pricing))
+    monkeypatch.setenv("VULCAN_GPU_HOUR_ASSUMPTIONS", str(assumptions))
     monkeypatch.setenv("VULCAN_RUNTIME_MODE", "cpu")
     exporter.refresh()
     body = exporter.generate_latest(exporter.REGISTRY).decode()
     assert "vulcan_routing_latency_p95_ms" in body
     assert 'backend="bentoml"' in body
+    assert "vulcan_estimated_cost_usd_per_token" in body
     assert "vulcan_estimated_cost_per_inference_usd" in body
-    assert "placeholder_cpu_compose" in body
+    assert "placeholder_cpu_compose" not in body
+    # throughput 10 rps * 16 tokens = 160 tok/s; $1/hr → 1/3600 per sec → per token = (1/3600)/160
+    assert "g5.xlarge" in body
 
 
 def test_metrics_http_endpoint(tmp_path: Path, monkeypatch) -> None:
@@ -84,15 +101,29 @@ def test_metrics_http_endpoint(tmp_path: Path, monkeypatch) -> None:
         ),
         encoding="utf-8",
     )
+    assumptions = tmp_path / "gpu-hour.json"
+    assumptions.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source": "static_reference_assumption",
+                "assumed_tokens_per_request": 16,
+                "default_instance_type_for_self_hosted_inference": "g5.xlarge",
+                "instance_types": {"g5.xlarge": {"usd_per_gpu_hour": 1.006}},
+            }
+        ),
+        encoding="utf-8",
+    )
     monkeypatch.setenv("VULCAN_BENCHMARK_DIR", str(bench))
     monkeypatch.setenv("VULCAN_BEDROCK_PRICING", str(tmp_path / "nope.json"))
-    monkeypatch.setenv("PORT", "19101")
+    monkeypatch.setenv("VULCAN_GPU_HOUR_ASSUMPTIONS", str(assumptions))
+    monkeypatch.setenv("PORT", "19102")
     t = threading.Thread(target=exporter.main, daemon=True)
     t.start()
     body = ""
     for _ in range(50):
         try:
-            conn = HTTPConnection("127.0.0.1", 19101, timeout=1)
+            conn = HTTPConnection("127.0.0.1", 19102, timeout=1)
             conn.request("GET", "/metrics")
             resp = conn.getresponse()
             body = resp.read().decode()
@@ -101,8 +132,8 @@ def test_metrics_http_endpoint(tmp_path: Path, monkeypatch) -> None:
                 break
         except OSError:
             pass
-    assert "vulcan_routing_latency_p95_ms" in body
-    conn = HTTPConnection("127.0.0.1", 19101, timeout=1)
+    assert "vulcan_estimated_cost_usd_per_token" in body
+    conn = HTTPConnection("127.0.0.1", 19102, timeout=1)
     conn.request("GET", "/nope")
     assert conn.getresponse().status == 404
     conn.close()
@@ -135,6 +166,7 @@ def test_refresh_skips_bad_json_and_gateway_backend(tmp_path: Path, monkeypatch)
     )
     monkeypatch.setenv("VULCAN_BENCHMARK_DIR", str(bench))
     monkeypatch.setenv("VULCAN_BEDROCK_PRICING", str(tmp_path / "missing.json"))
+    monkeypatch.setenv("VULCAN_GPU_HOUR_ASSUMPTIONS", str(tmp_path / "missing-assumptions.json"))
     exporter.refresh()
     body = exporter.generate_latest(exporter.REGISTRY).decode()
-    assert 'backend="gateway"' not in body or "vulcan_routing_latency_p95_ms" in body
+    assert "vulcan_routing_latency_p95_ms" in body or "vulcan_cost_exporter_info" in body

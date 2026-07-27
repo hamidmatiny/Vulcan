@@ -45,7 +45,7 @@ up: triton-prepare ## Start local stack (:9000/:9002/:9003/:9004; CPU-only)
 
 up-observability: ## Backends + gateway + Prometheus/Grafana/Tempo (:9008/:9009/:9010)
 	$(COMPOSE) up -d --build --wait bentoml ray-serve gateway \
-		otel-collector tempo prometheus alertmanager blackbox cost-exporter grafana
+		otel-collector tempo prometheus alertmanager blackbox cost-exporter synthetic-dcgm grafana
 
 down: ## Stop local stack
 	$(COMPOSE) down

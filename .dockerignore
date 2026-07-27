@@ -16,10 +16,12 @@ autoscaling
 pipelines
 console
 bedrock-gateway
-# observability/: allow cost-exporter image bake; exclude the rest of the tree
+# observability/: allow cost-exporter + synthetic-dcgm image bakes; exclude the rest
 observability/**
 !observability/cost-exporter/
 !observability/cost-exporter/**
+!observability/gpu-metrics/synthetic-dcgm/
+!observability/gpu-metrics/synthetic-dcgm/**
 benchmark/results/*.json
 !benchmark/results/.gitkeep
 # Keep models/artifacts for bentoml image bake (weights are required at build).

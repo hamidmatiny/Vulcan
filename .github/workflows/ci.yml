@@ -164,6 +164,7 @@ jobs:
           test -f docs/adr/005-spot-gpu-strategy.md
           test -f docs/adr/006-routing-policy.md
           test -f docs/adr/007-advanced-gpu-serving-techniques-scope.md
+          test -f docs/adr/008-self-hosted-cost-per-token-assumptions.md
           test -f models/MANIFEST.md
           test -f models/pins.json
       - name: Port convention (9000–9099)
@@ -965,9 +966,9 @@ jobs:
           cd models/scripts && ../.venv/bin/python verify_manifest.py
       - name: Build + start bentoml, ray-serve, gateway, obs stack
         run: |
-          docker compose build bentoml ray-serve gateway cost-exporter
+          docker compose build bentoml ray-serve gateway cost-exporter synthetic-dcgm
           docker compose up -d bentoml ray-serve gateway \
-            otel-collector tempo prometheus alertmanager blackbox cost-exporter grafana
+            otel-collector tempo prometheus alertmanager blackbox cost-exporter synthetic-dcgm grafana
       - name: Wait for gateway + prometheus
         run: |
           make wait-for-health WAIT_PORT=${{ env.VULCAN_GATEWAY_PORT }}
@@ -992,7 +993,7 @@ jobs:
         run: docker compose down -v
 
   adr-gate:
-    name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu)
+    name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu / cost-token)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

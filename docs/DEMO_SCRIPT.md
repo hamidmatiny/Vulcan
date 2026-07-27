@@ -76,7 +76,7 @@ Expect `routing.fallback=true` and an `attempts[]` entry with `outcome=unhealthy
 curl -fsS 'http://127.0.0.1:9008/api/v1/query?query=up{job="gateway"}' | python3 -m json.tool | head -40
 ```
 
-In Grafana, the **LIVE** panels (latency / throughput / error rate / health) should move after the curls above. **PLACEHOLDER** GPU panels stay labeled `data_source=placeholder_cpu_compose` (ADR-002).
+In Grafana, the **LIVE** panels (latency / throughput / error rate / health / cost-per-token) should move after the curls above. GPU utilization is **LIVE-SYNTHETIC** (`DCGM_FI_DEV_GPU_UTIL{data_source="synthetic_cpu_compose"}`) — scraped sample series, not real hardware (ADR-002).
 
 ## 5. Tear down (optional)
 

@@ -61,6 +61,14 @@ scrape_configs:
         labels:
           vulcan_component: cost-exporter
 
+  # DCGM-shaped sample metrics for CPU compose (not real NVIDIA DCGM — ADR-002).
+  - job_name: synthetic-dcgm
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["synthetic-dcgm:9400"]
+        labels:
+          vulcan_gpu_metrics: synthetic_cpu_compose
+
   # Contract /health semantics (status==ok) — same probe the gateway circuit breaker uses.
   - job_name: vulcan-health
     metrics_path: /probe
