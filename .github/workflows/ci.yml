@@ -312,32 +312,35 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install Trivy
-        uses: aquasecurity/setup-trivy@v0.2.6
-        with:
-          version: v0.56.2
-          cache: "true"
-      - name: Install Syft
-        id: syft
-        uses: anchore/sbom-action/download-syft@v0.17.9
-        with:
-          syft-version: v1.14.1
-      - name: Confirm Trivy + Syft on PATH
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # download-syft exposes the binary via outputs.cmd; put its dir on PATH for scan-image.sh
-          SYFT_CMD="${{ steps.syft.outputs.cmd }}"
-          echo "$(dirname "${SYFT_CMD}")" >> "$GITHUB_PATH"
-          export PATH="$(dirname "${SYFT_CMD}"):${PATH}"
-          if [[ "$(basename "${SYFT_CMD}")" != "syft" ]]; then
-            ln -sfn "${SYFT_CMD}" "$(dirname "${SYFT_CMD}")/syft"
-          fi
+          # Authenticated release download — avoids unauthenticated GitHub API rate limits
+          # that silently kill aquasecurity/trivy contrib/install.sh on shared runners.
+          curl -sSfL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/octet-stream" \
+            -o /tmp/trivy.tgz \
+            "https://github.com/aquasecurity/trivy/releases/download/v0.56.2/trivy_0.56.2_Linux-64bit.tar.gz"
+          sudo tar -xzf /tmp/trivy.tgz -C /usr/local/bin trivy
           trivy --version
+      - name: Install Syft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sSfL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/octet-stream" \
+            -o /tmp/syft.tgz \
+            "https://github.com/anchore/syft/releases/download/v1.14.1/syft_1.14.1_linux_amd64.tar.gz"
+          sudo tar -xzf /tmp/syft.tgz -C /usr/local/bin syft
           syft version
       - name: Export pinned reference models (CPU)
         run: |
           python -m pip install -U pip
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
-          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
           (cd models/scripts && ../.venv/bin/python verify_manifest.py)
@@ -384,7 +387,7 @@ jobs:
           python -m pip install -U pip
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
-          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
           (cd models/scripts && ../.venv/bin/python verify_manifest.py)
@@ -462,7 +465,7 @@ jobs:
           python -m pip install -U pip
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
-          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
           (cd models/scripts && ../.venv/bin/python verify_manifest.py)
@@ -540,7 +543,7 @@ jobs:
           python -m pip install -U pip
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
-          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
           (cd models/scripts && ../.venv/bin/python verify_manifest.py)
@@ -625,7 +628,7 @@ jobs:
           python -m pip install -U pip
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
-          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python verify_manifest.py --models reference-tiny-llm)
       - name: Build + start vllm stack (compose :9004)
@@ -901,7 +904,7 @@ jobs:
           python -m pip install -U pip
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
-          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
           (cd models/scripts && ../.venv/bin/python verify_manifest.py)
@@ -974,7 +977,7 @@ jobs:
           python -m pip install -U pip
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
-          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
           (cd models/scripts && ../.venv/bin/python verify_manifest.py)

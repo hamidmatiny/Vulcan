@@ -12,6 +12,7 @@ Cross-backend benchmarks are only legitimate when all backends load these pins.
 - Weights live under `models/artifacts/` (gitignored binaries); this manifest is committed.
 - Re-export with `python models/scripts/export_*.py` then `python models/scripts/write_manifest.py --require-artifacts`.
 - ONNX vision export requires `PYTHONHASHSEED=0` and single-threaded export (`torch.set_num_threads(1)`) for byte-reproducible digests.
+- Vision ONNX digests are pinned from the **CPU** torch wheel (`download.pytorch.org/whl/cpu`); installing the default CUDA PyPI torch first without `--force-reinstall` yields a different graph.
 
 ## Models
 
