@@ -8,6 +8,11 @@ FROM nvcr.io/nvidia/tritonserver:24.05-py3
 
 ENV CUDA_VISIBLE_DEVICES=""
 
+# Vendor image ships stale linux-libc-dev; Trivy CRITICAL gates on fixed CVEs in that package.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --only-upgrade linux-libc-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY serving/triton/model_repository /models
 
 # HTTP :8000, gRPC :8001, Prometheus metrics :8002 (internal compose network only).
