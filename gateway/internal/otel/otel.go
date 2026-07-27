@@ -66,11 +66,11 @@ func InjectTraceHeaders(ctx context.Context, req *http.Request) {
 
 // Transport returns an otel-instrumented RoundTripper for outbound calls.
 func Transport(base http.RoundTripper) http.RoundTripper {
-	if strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")) == "" {
-		return base
-	}
 	if base == nil {
 		base = http.DefaultTransport
+	}
+	if strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")) == "" {
+		return base
 	}
 	return otelhttp.NewTransport(base)
 }

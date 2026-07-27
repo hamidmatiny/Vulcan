@@ -22,10 +22,26 @@ Ad hoc subjects are not allowed. If a change spans phases, prefer splitting PRs;
 3. Serving backends must implement [`contracts/model-contract`](./contracts/model-contract/) exactly ([ADR-001](./docs/adr/001-unified-model-serving-contract.md)).
 4. Preserve **CPU-only dev mode**; never add CI steps that provision or run real GPUs ([ADR-002](./docs/adr/002-gpu-cost-safety-policy.md)).
 5. Architectural choices → new/updated ADR under `docs/adr/`, linked from `docs/adr/index.md`.
-6. Coverage for gated packages **≥ 65%** (CI `COVERAGE_MIN`).
+6. Coverage for gated packages **≥ 65%** (CI `COVERAGE_MIN`). See table below.
 7. Run `make lint` and `make test`. Use `make up` / `make down` if you touch compose.
 8. Update `.env.example` when you introduce new configuration.
 9. Do not commit secrets, credentials, or production model weights with licenses that forbid redistribution.
+10. Docs site: `make docs-build` (MkDocs Material). Prefer snipping existing READMEs over duplicating prose.
+
+## Coverage gate (gated packages)
+
+| Package | Gate |
+|---------|------|
+| `contracts/model-contract` | pytest-cov ≥65% |
+| `serving/common` | pytest-cov ≥65% (unit path; conformance against a live URL skips local cov) |
+| `autoscaling/checkpointing` | pytest-cov ≥65% |
+| `pipelines/sagemaker` | pytest-cov ≥65% |
+| `bedrock-gateway` | pytest-cov ≥65% |
+| `pipelines/kubeflow/pipelines` (`vulcan_kfp`) | pytest-cov ≥65% (omits KFP component bodies executed in-cluster) |
+| `gateway/internal` | `go test ./internal/...` total ≥65% (`cmd/gateway` thin main excluded) |
+| `observability/cost-exporter` | pytest-cov ≥65% |
+
+**Not unit-gated (documented reason):** serving adapters (bentoml/ray/triton/vllm) — contract **conformance + k6** in CI instead of line coverage; Helm/Terraform/KServe charts — validate-only (ADR-002); third-party compose images — not Vulcan packages.
 
 ## Definition of done — every new service
 

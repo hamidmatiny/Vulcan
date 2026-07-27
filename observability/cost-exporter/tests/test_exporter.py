@@ -1,0 +1,140 @@
+from __future__ import annotations
+
+import json
+import threading
+from http.client import HTTPConnection
+from pathlib import Path
+
+import exporter
+
+
+def test_refresh_loads_benchmark_and_pricing(tmp_path: Path, monkeypatch) -> None:
+    bench = tmp_path / "bench"
+    bench.mkdir()
+    (bench / "bentoml-cpu.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "backend": "bentoml",
+                "modality": "llm",
+                "model_id": "reference-tiny-llm",
+                "target_url": "http://x",
+                "started_at": "2026-01-01T00:00:00Z",
+                "duration_seconds": 1,
+                "vus": 1,
+                "metrics": {
+                    "requests_total": 1,
+                    "error_rate": 0,
+                    "throughput_rps": 1,
+                    "latency_ms": {"p50": 10, "p95": 42, "p99": 50},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    pricing = tmp_path / "pricing.json"
+    pricing.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source": "static_reference",
+                "models": {
+                    "amazon.titan-text-express-v1": {
+                        "input_usd_per_1k_tokens": 0.0002,
+                        "output_usd_per_1k_tokens": 0.0006,
+                        "typical_latency_ms": {"p50": 100, "p95": 400},
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("VULCAN_BENCHMARK_DIR", str(bench))
+    monkeypatch.setenv("VULCAN_BEDROCK_PRICING", str(pricing))
+    monkeypatch.setenv("VULCAN_RUNTIME_MODE", "cpu")
+    exporter.refresh()
+    body = exporter.generate_latest(exporter.REGISTRY).decode()
+    assert "vulcan_routing_latency_p95_ms" in body
+    assert 'backend="bentoml"' in body
+    assert "vulcan_estimated_cost_per_inference_usd" in body
+    assert "placeholder_cpu_compose" in body
+
+
+def test_metrics_http_endpoint(tmp_path: Path, monkeypatch) -> None:
+    bench = tmp_path / "bench"
+    bench.mkdir()
+    (bench / "ray-serve-cpu.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "backend": "ray-serve",
+                "modality": "llm",
+                "model_id": "reference-tiny-llm",
+                "target_url": "http://x",
+                "started_at": "2026-01-01T00:00:00Z",
+                "duration_seconds": 1,
+                "vus": 1,
+                "metrics": {
+                    "requests_total": 1,
+                    "error_rate": 0,
+                    "throughput_rps": 1,
+                    "latency_ms": {"p50": 10, "p95": 20, "p99": 30},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("VULCAN_BENCHMARK_DIR", str(bench))
+    monkeypatch.setenv("VULCAN_BEDROCK_PRICING", str(tmp_path / "nope.json"))
+    monkeypatch.setenv("PORT", "19101")
+    t = threading.Thread(target=exporter.main, daemon=True)
+    t.start()
+    body = ""
+    for _ in range(50):
+        try:
+            conn = HTTPConnection("127.0.0.1", 19101, timeout=1)
+            conn.request("GET", "/metrics")
+            resp = conn.getresponse()
+            body = resp.read().decode()
+            conn.close()
+            if resp.status == 200:
+                break
+        except OSError:
+            pass
+    assert "vulcan_routing_latency_p95_ms" in body
+    conn = HTTPConnection("127.0.0.1", 19101, timeout=1)
+    conn.request("GET", "/nope")
+    assert conn.getresponse().status == 404
+    conn.close()
+
+
+def test_refresh_skips_bad_json_and_gateway_backend(tmp_path: Path, monkeypatch) -> None:
+    bench = tmp_path / "bench"
+    bench.mkdir()
+    (bench / "broken-cpu.json").write_text("{not-json", encoding="utf-8")
+    (bench / "gateway-cpu.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "backend": "gateway",
+                "modality": "llm",
+                "model_id": "reference-tiny-llm",
+                "target_url": "http://x",
+                "started_at": "2026-01-01T00:00:00Z",
+                "duration_seconds": 1,
+                "vus": 1,
+                "metrics": {
+                    "requests_total": 1,
+                    "error_rate": 0,
+                    "throughput_rps": 1,
+                    "latency_ms": {"p50": 1, "p95": 2, "p99": 3},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("VULCAN_BENCHMARK_DIR", str(bench))
+    monkeypatch.setenv("VULCAN_BEDROCK_PRICING", str(tmp_path / "missing.json"))
+    exporter.refresh()
+    body = exporter.generate_latest(exporter.REGISTRY).decode()
+    assert 'backend="gateway"' not in body or "vulcan_routing_latency_p95_ms" in body

@@ -15,9 +15,11 @@ gpu-infra
 autoscaling
 pipelines
 console
-observability
 bedrock-gateway
-gateway
+# observability/: allow cost-exporter image bake; exclude the rest of the tree
+observability/**
+!observability/cost-exporter/
+!observability/cost-exporter/**
 benchmark/results/*.json
 !benchmark/results/.gitkeep
 # Keep models/artifacts for bentoml image bake (weights are required at build).

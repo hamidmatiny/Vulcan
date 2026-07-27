@@ -6,7 +6,7 @@
 
 **Vulcan** is a production-shaped multi-backend model-serving and GPU-orchestration platform — sibling project to [Argus](https://github.com/hamidmatiny/Argus). One serving contract, many runtimes (BentoML, Ray Serve, Triton, vLLM, KServe), with GPU infra that is validated in CI and applied only out-of-band.
 
-**Docs:** [ARCHITECTURE.md](./ARCHITECTURE.md) · [ADRs](./docs/adr/) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [Benchmarks (manual)](./docs/benchmarks/) · [CHANGELOG](./CHANGELOG.md)
+**Docs:** `make docs-serve` (MkDocs) · [DEMO](./docs/DEMO_SCRIPT.md) · [Case study](./docs/CASE_STUDY.md) · [Known gaps](./docs/KNOWN_GAPS.md) · [ADRs](./docs/adr/) · [CHANGELOG](./CHANGELOG.md) · tag **v1.0.0**
 
 | ADR | Decision |
 |-----|----------|

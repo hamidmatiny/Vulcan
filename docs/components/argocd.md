@@ -1,0 +1,1 @@
+--8<-- "infra/argocd/README.md"

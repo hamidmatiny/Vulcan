@@ -1,0 +1,1 @@
+--8<-- "gpu-infra/mig/README.md"

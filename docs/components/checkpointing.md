@@ -1,0 +1,1 @@
+--8<-- "autoscaling/checkpointing/README.md"

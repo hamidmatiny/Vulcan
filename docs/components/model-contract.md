@@ -1,0 +1,1 @@
+--8<-- "contracts/model-contract/README.md"

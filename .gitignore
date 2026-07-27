@@ -56,6 +56,9 @@ charts/**/charts/
 tmp/
 .cache/
 .direnv/
+site/
+sboms/
+docs/.venv/
 
 # Model weights (keep manifests / sidecars; ignore large binaries)
 models/**/*.bin

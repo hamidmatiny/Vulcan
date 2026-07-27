@@ -1,0 +1,1 @@
+--8<-- "pipelines/kubeflow/pipelines/README.md"

@@ -1,7 +1,7 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	test-checkpointing test-sagemaker test-bedrock test-gateway \
-	up-observability lint \
+	test-cost-exporter docs-serve docs-build up-observability lint \
 	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export \
 	models-verify triton-prepare wait-for-health validate-kserve \
@@ -107,7 +107,7 @@ test-serving-common: $(SERVING_COMMON_VENV)/bin/pytest ## Conformance + client t
 test-benchmark: $(SERVING_COMMON_VENV)/bin/pytest ## Benchmark compare-script unit tests
 	PYTHONPATH=benchmark/scripts $(SERVING_COMMON_VENV)/bin/python -m pytest -q benchmark/tests
 
-test: test-contracts test-serving-common test-benchmark ## Fan-out unit tests
+test: test-contracts test-serving-common test-benchmark test-gateway test-cost-exporter ## Fan-out unit tests
 	@echo "==> test: OK"
 
 lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest ## Fan-out linters
@@ -211,8 +211,34 @@ test-bedrock: $(BEDROCK_VENV)/bin/pytest ## Bedrock gateway adapter moto tests (
 		--cov=vulcan_bedrock --cov-report=term-missing \
 		--cov-fail-under=$(COVERAGE_MIN)
 
-test-gateway: ## Go unit/integration tests for routing gateway
-	cd gateway && go test ./...
+test-gateway: ## Go tests for gateway/internal (≥65% coverage; excludes thin cmd/)
+	cd gateway && go test ./internal/... -coverprofile=coverage.out -covermode=atomic \
+		&& go tool cover -func=coverage.out | awk '/^total:/{gsub(/%/,"",$$3); printf "gateway coverage: %s%%\n", $$3; if ($$3+0 < $(COVERAGE_MIN)) { print "coverage below $(COVERAGE_MIN)%" > "/dev/stderr"; exit 1 }}'
+
+COST_EXPORTER_DIR := observability/cost-exporter
+COST_EXPORTER_VENV := $(COST_EXPORTER_DIR)/.venv
+
+$(COST_EXPORTER_VENV)/bin/pytest: $(COST_EXPORTER_DIR)/pyproject.toml
+	$(PYTHON) -m venv $(COST_EXPORTER_VENV)
+	$(COST_EXPORTER_VENV)/bin/pip install -U pip
+	$(COST_EXPORTER_VENV)/bin/pip install -e "$(COST_EXPORTER_DIR)[dev]"
+
+test-cost-exporter: $(COST_EXPORTER_VENV)/bin/pytest ## Cost-exporter unit tests (≥65%)
+	cd $(COST_EXPORTER_DIR) && .venv/bin/pytest -q \
+		--cov=exporter --cov-report=term-missing \
+		--cov-fail-under=$(COVERAGE_MIN)
+
+docs-build: ## Build MkDocs Material site → site/
+	$(PYTHON) -m venv docs/.venv
+	docs/.venv/bin/pip install -q -U pip
+	docs/.venv/bin/pip install -q -r docs/requirements-docs.txt
+	docs/.venv/bin/mkdocs build
+
+docs-serve: ## Serve docs locally (http://127.0.0.1:8000)
+	$(PYTHON) -m venv docs/.venv
+	docs/.venv/bin/pip install -q -U pip
+	docs/.venv/bin/pip install -q -r docs/requirements-docs.txt
+	docs/.venv/bin/mkdocs serve -a 127.0.0.1:8000
 
 benchmark-gateway: ## Short CPU k6 against gateway (:9007) → gateway-cpu.json
 	@$(MAKE) wait-for-health WAIT_PORT=$(GATEWAY_PORT)

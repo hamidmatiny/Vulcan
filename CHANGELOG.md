@@ -2,106 +2,99 @@
 
 All notable changes to Vulcan are documented here.
 
-## [Unreleased]
+## [1.0.0] — 2026-07-26
 
-### Phase 14 — Observability (tracing, metrics, cost dashboards)
+Release hardening: security scans, docs site, coverage extensions, demo/case-study honesty docs. Tag: `v1.0.0`.
+
+### Phase 15 — Security hardening, docs site, and v1.0.0 release
+
+*commit [`9c6bffd`](https://github.com/hamidmatiny/Vulcan/commit/9c6bffd) / tag `v1.0.0`*
+
+- Trivy (CRITICAL, ignore-unfixed) + Syft SBOM on built images: bentoml, ray-serve, triton, triton-engine, vllm, vllm-engine, gateway, cost-exporter
+- Semgrep (`p/python`, `p/golang`) across serving/gateway/pipelines Python + Go
+- Coverage gate ≥65% extended to `gateway/internal` and `observability/cost-exporter`; exemptions documented in CONTRIBUTING + KNOWN_GAPS
+- MkDocs Material site wiring existing READMEs + ADRs 001–006 (`make docs-serve`)
+- `docs/DEMO_SCRIPT.md`, `docs/CASE_STUDY.md`, `docs/KNOWN_GAPS.md` (commands verified against the live CPU stack)
+
+### Phase commits (0–14)
+
+| Phase | Commit | Summary |
+|------:|--------|---------|
+| 0 | [`bd92ee4`](https://github.com/hamidmatiny/Vulcan/commit/bd92ee4) | Foundations, model contract, CI skeleton |
+| 1 | [`e8d1e88`](https://github.com/hamidmatiny/Vulcan/commit/e8d1e88) | Reference models and benchmark harness |
+| 2 | [`c7f7a02`](https://github.com/hamidmatiny/Vulcan/commit/c7f7a02) | BentoML adapter |
+| 3 | [`181c72c`](https://github.com/hamidmatiny/Vulcan/commit/181c72c) | Ray Serve adapter |
+| 4 | [`3e35d86`](https://github.com/hamidmatiny/Vulcan/commit/3e35d86) | Triton adapter |
+| 5 | [`54c5bb0`](https://github.com/hamidmatiny/Vulcan/commit/54c5bb0) | vLLM adapter |
+| 6 | [`372dc19`](https://github.com/hamidmatiny/Vulcan/commit/372dc19) | KServe adapter |
+| 7 | [`c5c4fdf`](https://github.com/hamidmatiny/Vulcan/commit/c5c4fdf) | GPU Operator, device plugin, MIG |
+| 8 | [`ba466fc`](https://github.com/hamidmatiny/Vulcan/commit/ba466fc) | Kueue multi-tenant GPU scheduling |
+| 9 | [`856277f`](https://github.com/hamidmatiny/Vulcan/commit/856277f) | Karpenter GPU autoscaling and checkpoint-resume |
+| 10 | [`559203d`](https://github.com/hamidmatiny/Vulcan/commit/559203d) | SageMaker Pipelines, Endpoints, Model Registry |
+| 11 | [`eece3f6`](https://github.com/hamidmatiny/Vulcan/commit/eece3f6) | Bedrock-aware gateway adapter |
+| 12 | [`cf0c480`](https://github.com/hamidmatiny/Vulcan/commit/cf0c480) | Kubeflow Pipelines + Training Operator → KServe |
+| 13 | [`3d83fe3`](https://github.com/hamidmatiny/Vulcan/commit/3d83fe3) | Routing gateway and benchmark-driven selection |
+| 14 | [`04beccb`](https://github.com/hamidmatiny/Vulcan/commit/04beccb) | Observability — tracing, metrics, cost dashboards |
+| 15 | [](https://github.com/hamidmatiny/Vulcan/commit/9c6bffd) | Security hardening, docs site, v1.0.0 release |
+
+### Phase 14 — Observability (tracing, metrics, cost dashboards) — `04beccb`
 
 - `observability/`: Prometheus (:9008), Grafana (:9009), Tempo (:9010), OTel collector, Alertmanager, blackbox
-- OTel instrumentation on gateway + bentoml/ray-serve/triton/vllm (end-to-end traces via gateway propagation)
-- Scrapes existing phase-0 `/metrics`; cost-exporter reuses benchmark + Bedrock pricing-reference (ADR-006 sources)
-- Grafana dashboard labels LIVE vs PLACEHOLDER GPU panels (ADR-002); health + error-rate alerts
-- CI path-filtered smoke: targets up + dashboard query + Tempo trace
+- OTel on gateway + bentoml/ray-serve/triton/vllm; scrapes existing phase-0 `/metrics`
+- Cost-exporter reuses benchmark + Bedrock pricing-reference; LIVE vs PLACEHOLDER GPU panels (ADR-002)
 
-### Phase 13 — Routing gateway and benchmark-driven backend selection
+### Phase 13 — Routing gateway — `3d83fe3`
 
-- `gateway/`: Go router on **:9007**; selects using `benchmark/results/*.json` + Bedrock pricing-reference
-- Circuit-break / fallback with legible `routing` on infer responses; optional request `constraints`
-- [ADR-006](./docs/adr/006-routing-policy.md); adr-gate for `gateway/**`; SageMaker/KServe excluded from auto-select without recorded data
-- CI: Go tests + compose conformance + k6 + kill-backend fallback
+- `gateway/` on **:9007**; ADR-006; explainable fallback; SageMaker/KServe excluded without recorded data
 
-### Phase 12 — Kubeflow Pipelines and Training Operator → KServe
+### Phase 12 — Kubeflow → KServe — `cf0c480`
 
-- `pipelines/kubeflow/pipelines/`: KFP SDK pipeline (train→eval→register) compiling to YAML
-- `pipelines/kubeflow/training-operator/`: PyTorchJob on Kueue `lq-training` + Karpenter `mig-large` + phase-9 checkpointing
-- Handoff InferenceService matching phase-6 KServe format; eval metrics aligned with phase-10 SageMaker
-- CI validate-only; runbook [`docs/runbooks/kubeflow-local-kind.md`](./docs/runbooks/kubeflow-local-kind.md)
+- KFP train→eval→register; Training Operator + KServe handoff; validate-only CI
 
-### Phase 11 — Bedrock-aware gateway adapter
+### Phase 11 — Bedrock adapter — `eece3f6`
 
-- `bedrock-gateway/`: thin LLM-branch contract shim over Bedrock `InvokeModel` (vLLM-shaped; vision unsupported)
-- Static `pricing-reference.json` ($/1K tokens + typical latency) for the phase-13 router
-- moto/fake-credential pytest in CI; optional local `:9006` (no compose)
+- `bedrock-gateway/` + static `pricing-reference.json`; moto CI
 
-### Phase 10 — SageMaker Pipelines, Endpoints, and Model Registry
+### Phase 10 — SageMaker — `559203d`
 
-- `pipelines/sagemaker/`: SageMaker SDK Pipeline (train → evaluate → register) for `reference-tiny-llm`
-- Model Registry + real-time Endpoint deploy/invoke helpers; contract-vocabulary README mapping
-- moto-backed pytest in CI (no live AWS); manual runbook with cost notes
-- Lint job ADR list includes ADR-005 (kept in sync with adr-gate)
+- Pipelines / Registry / Endpoint helpers; moto CI; manual runbook
 
-### Phase 9 — Karpenter GPU autoscaling and checkpoint-resume
+### Phase 9 — Karpenter + checkpointing — `856277f`
 
-- `autoscaling/karpenter/`: NodePools/EC2NodeClass (spot + on-demand) wired to phase 7–8 labels
-- `autoscaling/checkpointing/`: SIGTERM checkpoint/resume for GPT-2 fine-tune path
-- [ADR-005](./docs/adr/005-spot-gpu-strategy.md); adr-gate for `autoscaling/**`
+- Spot NodePools; SIGTERM checkpoint library; ADR-005
 
-### Phase 8 — Kueue multi-tenant GPU scheduling
+### Phase 8 — Kueue — `ba466fc`
 
-- `gpu-infra/kueue/`: inference + training ClusterQueues/LocalQueues, MIG-aware quotas, WorkloadPriorityClasses
-- Example Workloads for KServe InferenceService + forward-ref training Job
-- [ADR-004](./docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md); adr-gate requires it for `gpu-infra/kueue/`
+- Multi-tenant GPU queues; ADR-004
 
-### Phase 7 — GPU Operator, device plugin, and MIG
+### Phase 7 — GPU Operator / MIG — `c5c4fdf`
 
-- `gpu-infra/gpu-operator/`: EKS Helm values with explicit driver/toolkit vs device-plugin separation
-- `gpu-infra/mig/`: `many-small-inference` + `training-large-batch` profiles; [ADR-003](./docs/adr/003-mig-partitioning-strategy.md)
-- `infra/terraform/environments/gpu-eks/`: GPU node groups (labels/taints/instance types); validate/plan only
-- CI: path-filtered terraform + helm template + conftest (no apply — ADR-002)
+- Operator values, MIG profiles, terraform GPU EKS plan-only; ADR-003
 
-### Phase 6 — KServe adapter
+### Phase 6 — KServe — `372dc19`
 
-- `serving/kserve/helm/`: InferenceServices wrapping Triton + vLLM contract images (CPU-dev); canary `trafficPercent` example
-- CI: path-filtered `helm template` + kubeconform + conftest (no compose, no apply — ADR-002)
-- Runbook: [`docs/runbooks/kserve-local-kind.md`](./docs/runbooks/kserve-local-kind.md)
+- Helm InferenceServices wrapping Triton/vLLM; validate-only
 
-### Phase 5 — vLLM adapter
+### Phase 5 — vLLM — `54c5bb0`
 
-- Host port **9004** for `serving/vllm` (LLM-only; vision → `unsupported_modality`)
-- CPU OpenAI-compatible small-model path + GPU `vllm serve` docs (PagedAttention / continuous batching / TP)
-- Compose `vllm` / `vllm-engine`; CI conformance (`VULCAN_CONFORMANCE_MODALITIES=llm`) + k6 → `benchmark/results/vllm-cpu.json`
-- Standing commit-message rule: `phase-N:` or `fix(<component>):` only
+- Host **:9004**; LLM-only shim; CPU k6 artifact
 
-### Phase 4 — Triton adapter
+### Phase 4 — Triton — `3e35d86`
 
-- Host port **9003** reserved for `serving/triton` (contract shim); Triton engine stays internal
-- Triton model repository + ONNX for both phase-1 reference models; CPU `config.pbtxt` + GPU/TensorRT docs
-- Compose `triton` / `triton-engine`; CI conformance + short CPU k6 → `benchmark/results/triton-cpu.json`
+- Host **:9003** shim + internal engine; ONNX model repo
 
-### Phase 3 — Ray Serve adapter
+### Phase 3 — Ray Serve — `181c72c`
 
-- `serving/ray-serve/` on host port **9002**: contract-compliant Ray Serve deployments for both phase-1 reference models
-- README contrasts **Ray Serve** (inference replicas) vs **Ray Core** (ingest/task plane elsewhere)
-- CPU Dockerfile + compose; GPU `serve-config.gpu.yaml` documented, not CI; conformance + short k6 → `benchmark/results/ray-serve-cpu.json`
+- Host **:9002**; both reference models
 
-### Phase 2 — BentoML adapter
+### Phase 2 — BentoML — `c7f7a02`
 
-- Host port convention **9000–9099** (documented in `.cursor/rules` + `docker-compose.yml`)
-- `serving/bentoml/`: contract-compliant BentoML service for both phase-1 reference models (CPU Dockerfile; GPU Bento documented, not CI)
-- Compose `bentoml` on `:9000`; CI conformance + short CPU k6 → `benchmark/results/bentoml-cpu.json`
+- Host ports **9000–9099** convention; **:9000** adapter
 
-### Phase 1 — Reference models and benchmark harness
+### Phase 1 — Models + benchmark — `e8d1e88`
 
-- `models/`: fetch/export scripts for GPT-2 small (safetensors) + ResNet-18 (ONNX); [`MANIFEST.md`](./models/MANIFEST.md) pins revisions and sha256 digests
-- `serving/common/`: `VulcanClient` SDK, contract-conformance pytest suite, trivial CPU reference server
-- `benchmark/`: k6 load harness (parameterized URL/modality/VUs/duration), `results/schema.json`, `compare_results.py` markdown table
+- GPT-2 + ResNet-18 pins; k6 harness; serving/common client + conformance
 
-### Phase 0 — Foundations
+### Phase 0 — Foundations — `bd92ee4`
 
-- Monorepo scaffold matching the target layout (`contracts/`, `serving/*`, `gpu-infra/*`, `infra/*`, …)
-- `contracts/model-contract`: OpenAPI 3.1 + JSON Schema for `/health`, `/metrics`, `/v1/infer`, resource-requirements
-- [ADR-001](./docs/adr/001-unified-model-serving-contract.md) — unified serving contract
-- [ADR-002](./docs/adr/002-gpu-cost-safety-policy.md) — GPU cost-safety policy
-- GitHub Actions CI skeleton: lint, unit tests (coverage ≥65% on contracts), ADR gate
-- Makefile targets: `up`, `down`, `logs`, `test`, `lint`
-- `.cursor/rules/vulcan-foundations.mdc` for always-on agent guidance
-- Apache-2.0 license, docker-compose (CPU-only placeholder), `.env.example`
+- Contract OpenAPI/JSON Schema; ADR-001/002; CI skeleton; CPU compose placeholder

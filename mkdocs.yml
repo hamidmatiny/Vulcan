@@ -1,0 +1,94 @@
+site_name: Vulcan
+site_description: Multi-backend model serving + GPU orchestration (sibling bar to Argus)
+repo_url: https://github.com/hamidmatiny/Vulcan
+edit_uri: ""
+
+docs_dir: docs
+site_dir: site
+
+# Component pages snippet in-repo READMEs whose relative links point at the git tree,
+# not the MkDocs nav — ignore those so `mkdocs build` stays green.
+validation:
+  omitted_files: ignore
+  absolute_links: ignore
+  unrecognized_links: ignore
+  anchors: ignore
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep orange
+      accent: amber
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.suggest
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path:
+        - .
+        - docs
+      check_paths: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+
+nav:
+  - Home: index.md
+  - Demo (5 min): DEMO_SCRIPT.md
+  - Case study: CASE_STUDY.md
+  - Known gaps: KNOWN_GAPS.md
+  - Architecture: architecture.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+  - ADRs:
+      - Index: adr/index.md
+      - "001 Unified model serving contract": adr/001-unified-model-serving-contract.md
+      - "002 GPU cost-safety policy": adr/002-gpu-cost-safety-policy.md
+      - "003 MIG partitioning": adr/003-mig-partitioning-strategy.md
+      - "004 Kueue multi-tenant scheduling": adr/004-multi-tenant-gpu-scheduling-with-kueue.md
+      - "005 Spot GPU strategy": adr/005-spot-gpu-strategy.md
+      - "006 Routing policy": adr/006-routing-policy.md
+  - Components:
+      - Contracts: components/contracts.md
+      - Model contract: components/model-contract.md
+      - Serving overview: components/serving.md
+      - serving/common: components/serving-common.md
+      - serving/bentoml: components/serving-bentoml.md
+      - serving/ray-serve: components/serving-ray-serve.md
+      - serving/triton: components/serving-triton.md
+      - serving/vllm: components/serving-vllm.md
+      - serving/kserve: components/serving-kserve.md
+      - Gateway: components/gateway.md
+      - Observability: components/observability.md
+      - Models: components/models.md
+      - Benchmark: components/benchmark.md
+      - Bedrock gateway: components/bedrock-gateway.md
+      - SageMaker pipelines: components/sagemaker.md
+      - Kubeflow pipelines: components/kubeflow-pipelines.md
+      - Training Operator: components/kubeflow-training.md
+      - GPU Operator: components/gpu-operator.md
+      - MIG: components/mig.md
+      - Kueue: components/kueue.md
+      - Karpenter: components/karpenter.md
+      - Checkpointing: components/checkpointing.md
+      - Terraform: components/terraform.md
+      - Helm: components/helm.md
+      - Argo CD: components/argocd.md
+      - Console (stub): components/console.md
+      - E2E tests (stub): components/e2e.md
+  - Runbooks:
+      - KServe local kind: runbooks/kserve-local-kind.md
+      - Kubeflow local kind: runbooks/kubeflow-local-kind.md
+      - SageMaker manual: runbooks/sagemaker-manual-run.md
+  - Benchmarks notes: benchmarks/README.md

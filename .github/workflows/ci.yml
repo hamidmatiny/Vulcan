@@ -41,6 +41,8 @@ jobs:
       kubeflow_gate: ${{ steps.filter.outputs.kubeflow_gate }}
       gateway_gate: ${{ steps.filter.outputs.gateway_gate }}
       observability_gate: ${{ steps.filter.outputs.observability_gate }}
+      security_gate: ${{ steps.filter.outputs.security_gate }}
+      docs_gate: ${{ steps.filter.outputs.docs_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +54,23 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'Makefile'
               - 'docker-compose.yml'
+            security_gate:
+              - '**/Dockerfile*'
+              - 'gateway/**'
+              - 'observability/cost-exporter/**'
+              - 'serving/bentoml/**'
+              - 'serving/ray-serve/**'
+              - 'serving/triton/**'
+              - 'serving/vllm/**'
+              - '.github/scripts/scan-image.sh'
+            docs_gate:
+              - 'docs/**'
+              - 'mkdocs.yml'
+              - 'README.md'
+              - 'ARCHITECTURE.md'
+              - 'CONTRIBUTING.md'
+              - 'CHANGELOG.md'
+              - '**/README.md'
             gpu_infra_gate:
               - 'gpu-infra/**'
               - 'infra/terraform/**'
@@ -210,6 +229,117 @@ jobs:
         run: |
           . serving/common/.venv/bin/activate
           PYTHONPATH=benchmark/scripts pytest -q benchmark/tests
+
+  gateway-unit:
+    name: Unit tests · gateway (Go ≥65%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - name: Go coverage gate on gateway/internal
+        run: make test-gateway
+
+  cost-exporter-unit:
+    name: Unit tests · cost-exporter (≥65%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cost-exporter pytest coverage
+        run: make test-cost-exporter
+
+  semgrep:
+    name: Semgrep · Python + Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Semgrep
+        run: python -m pip install -U pip semgrep==1.90.0
+      - name: Semgrep rulesets
+        run: |
+          semgrep scan --config=p/python --config=p/golang --error \
+            --exclude='**/.venv/**' \
+            --exclude='**/models/artifacts/**' \
+            --exclude='**/site/**' \
+            --exclude='**/node_modules/**' \
+            serving/ gateway/ bedrock-gateway/ pipelines/ autoscaling/checkpointing/ observability/cost-exporter/ contracts/
+
+  docs:
+    name: Docs · MkDocs build
+    needs: changes
+    if: needs.changes.outputs.docs_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: mkdocs build
+        run: make docs-build
+
+  security-images:
+    name: Security · Trivy + Syft on built images
+    needs: changes
+    if: needs.changes.outputs.security_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.56.2
+          trivy --version
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+            | sh -s -- -b /usr/local/bin v1.14.1
+          syft version
+      - name: Export pinned reference models (CPU)
+        run: |
+          python -m pip install -U pip
+          python -m venv models/.venv
+          models/.venv/bin/pip install -r models/scripts/requirements.txt
+          models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          cd models/scripts && ../.venv/bin/python export_llm.py
+          cd models/scripts && ../.venv/bin/python export_vision.py
+          cd models/scripts && ../.venv/bin/python verify_manifest.py
+      - name: Prepare Triton model repository
+        run: make triton-prepare
+      - name: Build Vulcan images
+        run: |
+          docker compose build \
+            bentoml ray-serve triton-engine triton vllm-engine vllm gateway cost-exporter
+      - name: Trivy CRITICAL + Syft SBOM (each image)
+        run: |
+          chmod +x .github/scripts/scan-image.sh
+          for img in \
+            vulcan-bentoml:cpu \
+            vulcan-ray-serve:cpu \
+            vulcan-triton:cpu \
+            vulcan-triton-engine:cpu \
+            vulcan-vllm:cpu \
+            vulcan-vllm-engine:cpu \
+            vulcan-gateway:cpu \
+            vulcan-cost-exporter:cpu
+          do
+            .github/scripts/scan-image.sh "$img" sboms
+          done
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulcan-sboms
+          path: sboms/
 
   bentoml:
     name: BentoML · conformance + CPU k6

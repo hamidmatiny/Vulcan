@@ -1,0 +1,1 @@
+--8<-- "serving/kserve/README.md"
