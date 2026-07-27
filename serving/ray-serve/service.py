@@ -45,7 +45,17 @@ try:
 except ImportError:  # pragma: no cover
     from otel_setup import instrument_fastapi  # type: ignore
 
-instrument_fastapi(api, BACKEND_NAME)
+# Do NOT instrument at import time. Ray Serve pickles this FastAPI app into actors;
+# FastAPIInstrumentor / BatchSpanProcessor hold non-picklable locks (_thread.lock).
+_OTEL_INSTRUMENTED = False
+
+
+def _ensure_otel() -> None:
+    global _OTEL_INSTRUMENTED
+    if _OTEL_INSTRUMENTED:
+        return
+    instrument_fastapi(api, BACKEND_NAME)
+    _OTEL_INSTRUMENTED = True
 
 
 def _runtime_mode() -> str:
@@ -78,6 +88,7 @@ class VulcanRayService:
 
     def __init__(self) -> None:
         self._ready = False
+        _ensure_otel()
         # Per-replica registry avoids Prometheus duplicate registration across Ray workers.
         self._registry = CollectorRegistry()
         self._infer_requests = Counter(
