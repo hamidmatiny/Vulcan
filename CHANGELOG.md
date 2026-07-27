@@ -8,7 +8,7 @@ Release hardening: security scans, docs site, coverage extensions, demo/case-stu
 
 ### Phase 15 — Security hardening, docs site, and v1.0.0 release
 
-*commit [`9c6bffd`](https://github.com/hamidmatiny/Vulcan/commit/9c6bffd) / tag `v1.0.0`*
+*Release commit below; tag `v1.0.0`.*
 
 - Trivy (CRITICAL, ignore-unfixed) + Syft SBOM on built images: bentoml, ray-serve, triton, triton-engine, vllm, vllm-engine, gateway, cost-exporter
 - Semgrep (`p/python`, `p/golang`) across serving/gateway/pipelines Python + Go
@@ -16,7 +16,7 @@ Release hardening: security scans, docs site, coverage extensions, demo/case-stu
 - MkDocs Material site wiring existing READMEs + ADRs 001–006 (`make docs-serve`)
 - `docs/DEMO_SCRIPT.md`, `docs/CASE_STUDY.md`, `docs/KNOWN_GAPS.md` (commands verified against the live CPU stack)
 
-### Phase commits (0–14)
+### Phase commits (0–15)
 
 | Phase | Commit | Summary |
 |------:|--------|---------|
@@ -35,7 +35,7 @@ Release hardening: security scans, docs site, coverage extensions, demo/case-stu
 | 12 | [`cf0c480`](https://github.com/hamidmatiny/Vulcan/commit/cf0c480) | Kubeflow Pipelines + Training Operator → KServe |
 | 13 | [`3d83fe3`](https://github.com/hamidmatiny/Vulcan/commit/3d83fe3) | Routing gateway and benchmark-driven selection |
 | 14 | [`04beccb`](https://github.com/hamidmatiny/Vulcan/commit/04beccb) | Observability — tracing, metrics, cost dashboards |
-| 15 | [](https://github.com/hamidmatiny/Vulcan/commit/9c6bffd) | Security hardening, docs site, v1.0.0 release |
+| 15 | [`cba0197`](https://github.com/hamidmatiny/Vulcan/commit/cba0197) | Security hardening, docs site, v1.0.0 release |
 
 ### Phase 14 — Observability (tracing, metrics, cost dashboards) — `04beccb`
 
