@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY serving/vllm/engine/requirements.txt /app/serving/vllm/engine/requirements.txt
-RUN pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu \
+RUN pip install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu \
  && pip install --no-cache-dir -r /app/serving/vllm/engine/requirements.txt
 
 COPY serving/vllm/engine /app/serving/vllm/engine

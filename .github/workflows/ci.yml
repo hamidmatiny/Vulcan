@@ -342,7 +342,7 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           # --no-deps: do not smash numpy/protobuf; CPU wheel must replace any CUDA torch from requirements.
-          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
           models/.venv/bin/python -c 'import torch,numpy; print("torch", torch.__version__, "numpy", numpy.__version__)'
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
@@ -391,7 +391,7 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           # --no-deps: do not smash numpy/protobuf; CPU wheel must replace any CUDA torch from requirements.
-          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
           models/.venv/bin/python -c 'import torch,numpy; print("torch", torch.__version__, "numpy", numpy.__version__)'
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
@@ -424,6 +424,8 @@ jobs:
           pytest -q tests/conformance
       - name: Short CPU k6 (regression, not a perf claim)
         run: |
+          mkdir -p benchmark/results
+          chmod a+rwX benchmark/results
           docker run --rm --network host \
             -v "$PWD:/work" -w /work \
             -e BASE_URL="http://127.0.0.1:${VULCAN_BENTOML_PORT}" \
@@ -471,7 +473,7 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           # --no-deps: do not smash numpy/protobuf; CPU wheel must replace any CUDA torch from requirements.
-          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
           models/.venv/bin/python -c 'import torch,numpy; print("torch", torch.__version__, "numpy", numpy.__version__)'
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
@@ -504,6 +506,8 @@ jobs:
           pytest -q tests/conformance
       - name: Short CPU k6 (regression, not a perf claim)
         run: |
+          mkdir -p benchmark/results
+          chmod a+rwX benchmark/results
           docker run --rm --network host \
             -v "$PWD:/work" -w /work \
             -e BASE_URL="http://127.0.0.1:${VULCAN_RAY_SERVE_PORT}" \
@@ -551,7 +555,7 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           # --no-deps: do not smash numpy/protobuf; CPU wheel must replace any CUDA torch from requirements.
-          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
           models/.venv/bin/python -c 'import torch,numpy; print("torch", torch.__version__, "numpy", numpy.__version__)'
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
@@ -591,6 +595,8 @@ jobs:
           pytest -q tests/conformance
       - name: Short CPU k6 (regression, not a perf claim)
         run: |
+          mkdir -p benchmark/results
+          chmod a+rwX benchmark/results
           docker run --rm --network host \
             -v "$PWD:/work" -w /work \
             -e BASE_URL="http://127.0.0.1:${VULCAN_TRITON_PORT}" \
@@ -638,7 +644,7 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           # --no-deps: do not smash numpy/protobuf; CPU wheel must replace any CUDA torch from requirements.
-          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
           models/.venv/bin/python -c 'import torch,numpy; print("torch", torch.__version__, "numpy", numpy.__version__)'
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python verify_manifest.py --models reference-tiny-llm)
@@ -686,6 +692,8 @@ jobs:
           PY
       - name: Short CPU k6 (regression, not a perf claim)
         run: |
+          mkdir -p benchmark/results
+          chmod a+rwX benchmark/results
           docker run --rm --network host \
             -v "$PWD:/work" -w /work \
             -e BASE_URL="http://127.0.0.1:${VULCAN_VLLM_PORT}" \
@@ -916,7 +924,7 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           # --no-deps: do not smash numpy/protobuf; CPU wheel must replace any CUDA torch from requirements.
-          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
           models/.venv/bin/python -c 'import torch,numpy; print("torch", torch.__version__, "numpy", numpy.__version__)'
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)
@@ -938,6 +946,9 @@ jobs:
           pytest -q tests/conformance
       - name: Short CPU k6 against gateway
         run: |
+          # k6 container user must be able to create/overwrite RESULTS_OUT
+          mkdir -p benchmark/results
+          chmod a+rwX benchmark/results
           docker run --rm --network host \
             -v "$PWD:/work" -w /work \
             -e BASE_URL="http://127.0.0.1:${VULCAN_GATEWAY_PORT}" \
@@ -991,7 +1002,7 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           # --no-deps: do not smash numpy/protobuf; CPU wheel must replace any CUDA torch from requirements.
-          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
           models/.venv/bin/python -c 'import torch,numpy; print("torch", torch.__version__, "numpy", numpy.__version__)'
           (cd models/scripts && ../.venv/bin/python export_llm.py)
           (cd models/scripts && ../.venv/bin/python export_vision.py)

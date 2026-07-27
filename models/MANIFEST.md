@@ -47,12 +47,12 @@ Cross-backend benchmarks are only legitimate when all backends load these pins.
 - **Export format:** `onnx`
 - **Artifact dir:** `artifacts/vision/resnet18/`
 - **Primary file:** `model.onnx`
-- **Primary sha256:** `1ab981b6903b1be99cbf97cbb581d31c595c9dc6b899ea7e01a489e364b333e7`
+- **Primary sha256:** `9a04ddfe306527677e36051655dc8cd648cee7ca1166a51b952313e8e8f29720`
 
 | File | sha256 |
 |------|--------|
 | `imagenet_classes.json` | `47c75d27d7a4c62415c9c1c4536ac98c68e1417b880987dbc5b166c3b7ebf1d9` |
-| `model.onnx` | `1ab981b6903b1be99cbf97cbb581d31c595c9dc6b899ea7e01a489e364b333e7` |
+| `model.onnx` | `9a04ddfe306527677e36051655dc8cd648cee7ca1166a51b952313e8e8f29720` |
 | `preprocess.json` | `f9df32d8b268b1a17b79ea9d35a24beb63bb3dd7a0be0917a10d86138962d49b` |
 
 > ImageNet-pretrained ResNet-18 exported to ONNX for Triton/ONNX Runtime and other backends.
