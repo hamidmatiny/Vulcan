@@ -2,6 +2,7 @@ package vulcan.kubeflow.training_test
 
 import data.vulcan.kubeflow.training
 import future.keywords.if
+import future.keywords.in
 
 test_deny_missing_queue if {
 	doc := {

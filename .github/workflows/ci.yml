@@ -274,7 +274,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install Semgrep
-        run: python -m pip install -U pip semgrep==1.90.0
+        # setuptools provides pkg_resources; setuptools 82+ can omit it and break semgrep 1.90.
+        run: python -m pip install -U pip 'setuptools<81' semgrep==1.90.0
       - name: Semgrep rulesets
         run: |
           semgrep scan --config=p/python --config=p/golang --error \
@@ -311,12 +312,12 @@ jobs:
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.56.2
+            | sudo sh -s -- -b /usr/local/bin v0.56.2
           trivy --version
       - name: Install Syft
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-            | sh -s -- -b /usr/local/bin v1.14.1
+            | sudo sh -s -- -b /usr/local/bin v1.14.1
           syft version
       - name: Export pinned reference models (CPU)
         run: |
@@ -324,9 +325,9 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-          cd models/scripts && ../.venv/bin/python export_llm.py
-          cd models/scripts && ../.venv/bin/python export_vision.py
-          cd models/scripts && ../.venv/bin/python verify_manifest.py
+          (cd models/scripts && ../.venv/bin/python export_llm.py)
+          (cd models/scripts && ../.venv/bin/python export_vision.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
       - name: Prepare Triton model repository
         run: make triton-prepare
       - name: Build Vulcan images
@@ -371,9 +372,9 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-          cd models/scripts && ../.venv/bin/python export_llm.py
-          cd models/scripts && ../.venv/bin/python export_vision.py
-          cd models/scripts && ../.venv/bin/python verify_manifest.py
+          (cd models/scripts && ../.venv/bin/python export_llm.py)
+          (cd models/scripts && ../.venv/bin/python export_vision.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
       - name: Build + start bentoml (compose :9000)
         run: |
           docker compose build bentoml
@@ -449,9 +450,9 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-          cd models/scripts && ../.venv/bin/python export_llm.py
-          cd models/scripts && ../.venv/bin/python export_vision.py
-          cd models/scripts && ../.venv/bin/python verify_manifest.py
+          (cd models/scripts && ../.venv/bin/python export_llm.py)
+          (cd models/scripts && ../.venv/bin/python export_vision.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
       - name: Build + start ray-serve (compose :9002)
         run: |
           docker compose build ray-serve
@@ -527,9 +528,9 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-          cd models/scripts && ../.venv/bin/python export_llm.py
-          cd models/scripts && ../.venv/bin/python export_vision.py
-          cd models/scripts && ../.venv/bin/python verify_manifest.py
+          (cd models/scripts && ../.venv/bin/python export_llm.py)
+          (cd models/scripts && ../.venv/bin/python export_vision.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
       - name: Prepare Triton model repository (ONNX)
         run: |
           models/.venv/bin/pip install -r serving/triton/scripts/requirements-prepare.txt
@@ -612,8 +613,8 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-          cd models/scripts && ../.venv/bin/python export_llm.py
-          cd models/scripts && ../.venv/bin/python verify_manifest.py
+          (cd models/scripts && ../.venv/bin/python export_llm.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
       - name: Build + start vllm stack (compose :9004)
         run: |
           docker compose build vllm-engine vllm
@@ -888,9 +889,9 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-          cd models/scripts && ../.venv/bin/python export_llm.py
-          cd models/scripts && ../.venv/bin/python export_vision.py
-          cd models/scripts && ../.venv/bin/python verify_manifest.py
+          (cd models/scripts && ../.venv/bin/python export_llm.py)
+          (cd models/scripts && ../.venv/bin/python export_vision.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
       - name: Build + start bentoml, ray-serve, gateway (:9007)
         run: |
           docker compose build bentoml ray-serve gateway
@@ -961,9 +962,9 @@ jobs:
           python -m venv models/.venv
           models/.venv/bin/pip install -r models/scripts/requirements.txt
           models/.venv/bin/pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
-          cd models/scripts && ../.venv/bin/python export_llm.py
-          cd models/scripts && ../.venv/bin/python export_vision.py
-          cd models/scripts && ../.venv/bin/python verify_manifest.py
+          (cd models/scripts && ../.venv/bin/python export_llm.py)
+          (cd models/scripts && ../.venv/bin/python export_vision.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
       - name: Build + start bentoml, ray-serve, gateway, obs stack
         run: |
           docker compose build bentoml ray-serve gateway cost-exporter synthetic-dcgm
@@ -1021,7 +1022,7 @@ jobs:
           python -m pip install -U pip
           python -m venv contracts/model-contract/.venv
           contracts/model-contract/.venv/bin/pip install -e "contracts/model-contract[dev]"
-      - name: Validate gpu-variants + TensorRT-LLM template (ADR-002: no GPU)
+      - name: "Validate gpu-variants + TensorRT-LLM template (ADR-002: no GPU)"
         run: |
           chmod +x serving/scripts/validate-advanced-gpu-serving.sh
           make validate-advanced-gpu
