@@ -1,5 +1,5 @@
 # CPU-only gateway image (ADR-002).
-FROM golang:1.22-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 COPY gateway/go.mod gateway/go.sum* ./
 RUN go mod download
