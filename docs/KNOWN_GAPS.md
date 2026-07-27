@@ -25,7 +25,7 @@ Honest inventory as of **v1.0.0**. Prefer this over marketing language in README
 | GPU Operator / MIG / Kueue / Karpenter | template + conftest / terraform plan | **Never applied** by automation |
 | Checkpointing library | unit-tested | Needs a real SIGTERM on a GPU training Job to prove e2e |
 | Kubeflow Pipelines / Training Operator | compile + validate | Requires **manual** cluster bring-up ([runbook](runbooks/kubeflow-local-kind.md)) |
-| Terraform GPU EKS | `validate` + offline `plan` | No `apply`, no live nodes |
+| TensorRT-LLM / vLLM GPTQ·AWQ·FP8 / speculative decoding | Config + docs only ([ADR-007](adr/007-advanced-gpu-serving-techniques-scope.md)); CI schema/`config.pbtxt` lint | Real `trtllm-build` / GPU measure — [runbook](runbooks/tensorrt-llm-build.md) |
 
 ## Observability
 

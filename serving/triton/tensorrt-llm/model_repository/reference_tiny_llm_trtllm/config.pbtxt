@@ -1,0 +1,61 @@
+# Triton model config template — TensorRT-LLM backend (phase-16)
+#
+# STRUCTURAL TEMPLATE ONLY. Does not include a built TensorRT engine.
+# CI lints this file; never run trtllm-build in GitHub Actions (ADR-002 / ADR-007).
+# Real build/deploy: docs/runbooks/tensorrt-llm-build.md
+#
+# After trtllm-build, place engine artifacts under version directory 1/ and
+# set gpt_model_path to that directory inside the container.
+
+name: "reference_tiny_llm_trtllm"
+backend: "tensorrt_llm"
+max_batch_size: 64
+
+model_transaction_policy {
+  decoupled: true
+}
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+  }
+]
+
+# Parameters follow NVIDIA Triton’s tensorrt_llm backend conventions.
+# Exact keys can evolve with NGC tags — keep names aligned with the
+# Triton version in Dockerfile.engine.tensorrtllm when you deploy.
+parameters: {
+  key: "gpt_model_type"
+  value: {
+    string_value: "inflight_fused_batching"
+  }
+}
+
+parameters: {
+  key: "gpt_model_path"
+  value: {
+    string_value: "/models/reference_tiny_llm_trtllm/1"
+  }
+}
+
+parameters: {
+  key: "batching_strategy"
+  value: {
+    string_value: "inflight_fused_batching"
+  }
+}
+
+parameters: {
+  key: "max_beam_width"
+  value: {
+    string_value: "1"
+  }
+}
+
+parameters: {
+  key: "enable_chunked_context"
+  value: {
+    string_value: "true"
+  }
+}

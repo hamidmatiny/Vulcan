@@ -104,7 +104,9 @@ On Apple Silicon, `triton-engine` uses `platform: linux/amd64` (QEMU). Prefer an
 
 ## GPU / TensorRT (manual — not CI)
 
-See [`docs/gpu-tensorrt.md`](./docs/gpu-tensorrt.md): `KIND_GPU`, TensorRT execution accelerator, `--gpus all`. Do not enable in CI ([ADR-002](../../docs/adr/002-gpu-cost-safety-policy.md)).
+See [`docs/gpu-tensorrt.md`](./docs/gpu-tensorrt.md) for ONNX Runtime + TensorRT accelerator notes.
+
+Phase-16 **TensorRT-LLM backend** variant (separate from ONNX): [`tensorrt-llm/`](./tensorrt-llm/) — structural `config.pbtxt` + Dockerfile; build/deploy runbook [`docs/runbooks/tensorrt-llm-build.md`](../../docs/runbooks/tensorrt-llm-build.md) ([ADR-007](../../docs/adr/007-advanced-gpu-serving-techniques-scope.md)). Do not enable in CI ([ADR-002](../../docs/adr/002-gpu-cost-safety-policy.md)).
 
 ## perf_analyzer (deeper GPU benchmark later)
 

@@ -1,0 +1,4 @@
+# Placeholder version dir. Put trtllm-build outputs here on a GPU workstation.
+# CI never populates this directory (ADR-002 / ADR-007).
+*
+!.gitkeep

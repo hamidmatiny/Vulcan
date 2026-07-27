@@ -55,7 +55,7 @@ Ad hoc subjects are not allowed. If a change spans phases, prefer splitting PRs;
 
 ## ADR gate
 
-CI fails if changes land under `contracts/`, `gpu-infra/`, `autoscaling/`, or `gateway/` without evidence of ADR coverage (see `.github/scripts/check-adr-gate.sh`). When in doubt, add or update an ADR in the same PR.
+CI fails if changes land under `contracts/`, `gpu-infra/`, `autoscaling/`, `gateway/`, `serving/vllm/gpu-variants/`, or `serving/triton/tensorrt-llm/` without evidence of ADR coverage (see `.github/scripts/check-adr-gate.sh`). When in doubt, add or update an ADR in the same PR.
 
 ## Local commands
 

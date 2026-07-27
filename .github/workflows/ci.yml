@@ -41,6 +41,7 @@ jobs:
       kubeflow_gate: ${{ steps.filter.outputs.kubeflow_gate }}
       gateway_gate: ${{ steps.filter.outputs.gateway_gate }}
       observability_gate: ${{ steps.filter.outputs.observability_gate }}
+      advanced_gpu_gate: ${{ steps.filter.outputs.advanced_gpu_gate }}
       security_gate: ${{ steps.filter.outputs.security_gate }}
       docs_gate: ${{ steps.filter.outputs.docs_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
@@ -93,6 +94,13 @@ jobs:
               - 'benchmark/results/**'
               - 'bedrock-gateway/pricing-reference.json'
               - 'contracts/**'
+            advanced_gpu_gate:
+              - 'serving/vllm/gpu-variants/**'
+              - 'serving/vllm/docs/gpu-mode.md'
+              - 'serving/triton/tensorrt-llm/**'
+              - 'docs/adr/007-advanced-gpu-serving-techniques-scope.md'
+              - 'docs/runbooks/tensorrt-llm-build.md'
+              - 'serving/scripts/validate-advanced-gpu-serving.sh'
             observability_gate:
               - 'observability/**'
               - 'gateway/internal/otel/**'
@@ -155,6 +163,7 @@ jobs:
           test -f docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md
           test -f docs/adr/005-spot-gpu-strategy.md
           test -f docs/adr/006-routing-policy.md
+          test -f docs/adr/007-advanced-gpu-serving-techniques-scope.md
           test -f models/MANIFEST.md
           test -f models/pins.json
       - name: Port convention (9000–9099)
@@ -184,6 +193,9 @@ jobs:
           test -f docs/runbooks/kserve-local-kind.md
           test -f observability/prometheus/prometheus.yml
           test -f observability/grafana/dashboards/vulcan-serving.json
+          test -f serving/vllm/gpu-variants/gptq/resource-requirements.json
+          test -f serving/triton/tensorrt-llm/model_repository/reference_tiny_llm_trtllm/config.pbtxt
+          test -f docs/runbooks/tensorrt-llm-build.md
 
   unit-tests:
     name: Unit tests · contracts
@@ -980,15 +992,35 @@ jobs:
         run: docker compose down -v
 
   adr-gate:
-    name: ADR gate (contracts / gpu-infra / autoscaling / gateway)
+    name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Fail if ADR missing for contracts/, gpu-infra/, autoscaling/, or gateway/ changes
+      - name: Fail if ADR missing for gated area changes
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
         run: |
           chmod +x .github/scripts/check-adr-gate.sh
           .github/scripts/check-adr-gate.sh
+
+  advanced-gpu:
+    name: Advanced GPU serving · schema + config.pbtxt lint (no GPU)
+    needs: changes
+    if: needs.changes.outputs.advanced_gpu_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install model-contract
+        run: |
+          python -m pip install -U pip
+          python -m venv contracts/model-contract/.venv
+          contracts/model-contract/.venv/bin/pip install -e "contracts/model-contract[dev]"
+      - name: Validate gpu-variants + TensorRT-LLM template (ADR-002: no GPU)
+        run: |
+          chmod +x serving/scripts/validate-advanced-gpu-serving.sh
+          make validate-advanced-gpu

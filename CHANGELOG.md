@@ -2,6 +2,15 @@
 
 All notable changes to Vulcan are documented here.
 
+## [Unreleased]
+
+### Phase 16 — Advanced GPU serving (v1.1.0 track)
+
+- Extended `serving/vllm/docs/gpu-mode.md`: continuous batching, PagedAttention vs CPU KV, speculative decoding pairs
+- `serving/vllm/gpu-variants/{gptq,awq,fp8}/`: schema-valid resource manifests (`supports_quantization`, declared VRAM envelopes)
+- `serving/triton/tensorrt-llm/`: TensorRT-LLM `config.pbtxt` template + Dockerfile + [runbook](./docs/runbooks/tensorrt-llm-build.md)
+- [ADR-007](./docs/adr/007-advanced-gpu-serving-techniques-scope.md); adr-gate; CI validate-only (no GPU, no invented numbers)
+
 ## [1.0.0] — 2026-07-26
 
 Release hardening: security scans, docs site, coverage extensions, demo/case-study honesty docs. Tag: `v1.0.0`.

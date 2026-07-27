@@ -1,0 +1,16 @@
+{
+  "model_id": "reference-tiny-llm",
+  "backend": "vllm",
+  "gpu_memory_mib": {
+    "min": 512,
+    "max": 1024
+  },
+  "supports_mig": true,
+  "supports_quantization": true,
+  "cold_start_seconds": {
+    "min": 30,
+    "max": 300
+  },
+  "cpu_dev_mode": false,
+  "notes": "GPTQ (typically W4) packaging of reference-tiny-llm for GPU vLLM. gpu_memory_mib is a DECLARED scheduler envelope from ~4x weight compression vs FP16 for this small model plus KV headroom — NOT a measured VRAM footprint and NOT a throughput/quality claim (ADR-002, ADR-007). Launch: vllm serve <gptq-checkpoint> --quantization gptq --dtype float16 --gpu-memory-utilization 0.85. Requires a GPTQ-format checkpoint (AutoGPTQ or equivalent); the phase-1 safetensors pin is not GPTQ by itself."
+}

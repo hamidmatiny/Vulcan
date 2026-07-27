@@ -10,3 +10,4 @@ Short records of the biggest technology choices in Vulcan. Each ADR states the c
 | [004](004-multi-tenant-gpu-scheduling-with-kueue.md) | Multi-tenant GPU scheduling with Kueue | Accepted |
 | [005](005-spot-gpu-strategy.md) | Spot GPU strategy | Accepted |
 | [006](006-routing-policy.md) | Routing policy | Accepted |
+| [007](007-advanced-gpu-serving-techniques-scope.md) | Advanced GPU serving techniques scope | Accepted |

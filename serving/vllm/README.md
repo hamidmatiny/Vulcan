@@ -40,7 +40,7 @@ Client → contract shim (:9004)  — /health /metrics /v1/infer /v1/resources
 | Benefit | Contract correctness without CUDA | Continuous batching, PagedAttention, tensor parallelism |
 | Benchmark artifact | `benchmark/results/vllm-cpu.json` | `docs/benchmarks/` only |
 
-CPU mode does **not** claim vLLM’s GPU scheduling benefits. See [docs/gpu-mode.md](./docs/gpu-mode.md).
+CPU mode does **not** claim vLLM’s GPU scheduling benefits. See [docs/gpu-mode.md](./docs/gpu-mode.md) (phase-16: continuous batching, PagedAttention, speculative decoding). Quantized GPU packs: [`gpu-variants/`](./gpu-variants/) ([ADR-007](../../docs/adr/007-advanced-gpu-serving-techniques-scope.md)).
 
 ## Contract mapping
 
@@ -69,3 +69,5 @@ make benchmark-vllm          # wait-for-health + k6 → vllm-cpu.json
 | `gpu_memory_mib` | min/max **0** |
 | `supports_mig` | `true` (GPU path capable; unused in CPU-dev) |
 | `cpu_dev_mode` | **`true`** |
+
+Quantized GPU variants (not used in compose) live under [`gpu-variants/`](./gpu-variants/) with `cpu_dev_mode: false`.

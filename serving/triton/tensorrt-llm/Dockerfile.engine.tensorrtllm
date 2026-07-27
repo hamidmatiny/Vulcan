@@ -1,0 +1,28 @@
+# Triton + TensorRT-LLM backend image (GPU host only — ADR-002).
+# Build from repo root AFTER you have placed a trtllm-built engine under
+# serving/triton/tensorrt-llm/model_repository/reference_tiny_llm_trtllm/1/
+# (see docs/runbooks/tensorrt-llm-build.md).
+#
+#   docker build -f serving/triton/tensorrt-llm/Dockerfile.engine.tensorrtllm \
+#     -t vulcan-triton-engine:tensorrtllm .
+#
+# Do NOT add this build to CI. It requires matching NVIDIA driver/CUDA and a
+# real engine artifact; the empty 1/ placeholder is intentional for git.
+
+FROM nvcr.io/nvidia/tritonserver:24.05-trtllm-python-py3
+
+# GPU required — do not set CUDA_VISIBLE_DEVICES="" here (unlike the CPU ONNX engine).
+COPY serving/triton/tensorrt-llm/model_repository /models
+
+EXPOSE 8000 8001 8002
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=180s --retries=36 \
+  CMD curl -fsS http://127.0.0.1:8000/v2/health/ready || exit 1
+
+CMD ["tritonserver", \
+     "--model-repository=/models", \
+     "--http-port=8000", \
+     "--grpc-port=8001", \
+     "--metrics-port=8002", \
+     "--strict-model-config=true", \
+     "--log-verbose=0"]

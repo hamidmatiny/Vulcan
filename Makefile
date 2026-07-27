@@ -5,7 +5,8 @@
 	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export \
 	models-verify triton-prepare wait-for-health validate-kserve \
-	validate-gpu-infra validate-autoscaling validate-kubeflow help
+	validate-gpu-infra validate-autoscaling validate-kubeflow \
+	validate-advanced-gpu help
 
 COMPOSE ?= docker compose
 PYTHON ?= $(shell command -v python3.12 >/dev/null 2>&1 && echo python3.12 || echo python3)
@@ -179,6 +180,10 @@ validate-autoscaling: ## Karpenter helm template + kubeconform + conftest (no ap
 
 validate-kubeflow: ## compile KFP + kubeconform/conftest PyTorchJob/ISVC (no apply)
 	bash pipelines/kubeflow/scripts/validate.sh
+
+validate-advanced-gpu: ## Schema-validate vLLM quant manifests + lint TRT-LLM config.pbtxt (no GPU)
+	chmod +x serving/scripts/validate-advanced-gpu-serving.sh
+	bash serving/scripts/validate-advanced-gpu-serving.sh
 
 $(CHECKPOINTING_VENV)/bin/pytest: $(CHECKPOINTING_DIR)/pyproject.toml
 	$(PYTHON) -m venv $(CHECKPOINTING_VENV)
