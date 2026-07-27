@@ -18,7 +18,7 @@ LangGraph advisor with non-fabrication CI. Feature commits:
 | 19 | [`21d590b`](https://github.com/hamidmatiny/Vulcan/commit/21d590b) | LoRA/PEFT adapter fine-tuning + transparent serving |
 | 20 | [`baa2ba4`](https://github.com/hamidmatiny/Vulcan/commit/baa2ba4) | DVC for deterministic model exports |
 | 21 | [`3e81029`](https://github.com/hamidmatiny/Vulcan/commit/3e81029) | Pluggable experiment tracking (MLflow + W&B offline) |
-| 22 | [`35f282d`](https://github.com/hamidmatiny/Vulcan/commit/35f282d) | LangGraph advisor — tool-grounded, non-fabrication |
+| 22 | [`c61e16c`](https://github.com/hamidmatiny/Vulcan/commit/c61e16c) | LangGraph advisor — tool-grounded, non-fabrication |
 
 ### Phase 22 — LangGraph advisor (tool-grounded, non-fabrication)
 
