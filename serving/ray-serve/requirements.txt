@@ -1,7 +1,8 @@
 # CPU-only runtime for Vulcan Ray Serve adapter (ADR-002).
 # Install torch separately from the CPU wheel index (see Dockerfile / README).
 setuptools>=69,<82
-ray[serve]>=2.30,<2.40
+# CVE-2025-62593 (CRITICAL RCE via DNS rebinding) fixed in 2.52.0
+ray[serve]>=2.52.0,<2.55
 # FastAPI/Starlette pins: newer Starlette embeds locks that Ray cannot pickle for @serve.ingress.
 fastapi>=0.110,<0.116
 starlette>=0.36,<0.38
