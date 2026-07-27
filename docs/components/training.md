@@ -1,0 +1,1 @@
+--8<-- "training/README.md"

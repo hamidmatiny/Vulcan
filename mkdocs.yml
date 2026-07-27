@@ -1,5 +1,5 @@
 site_name: Vulcan
-site_description: Multi-backend model serving + GPU orchestration (sibling bar to Argus)
+site_description: Contract-first serving + training platform — multi-backend inference, distributed training/LoRA, MLflow/W&B tracking, DVC, and a tool-grounded LangGraph advisor (CPU-safe in CI)
 repo_url: https://github.com/hamidmatiny/Vulcan
 edit_uri: ""
 
@@ -61,6 +61,12 @@ nav:
       - "006 Routing policy": adr/006-routing-policy.md
       - "007 Advanced GPU serving techniques": adr/007-advanced-gpu-serving-techniques-scope.md
       - "008 Self-hosted cost-per-token assumptions": adr/008-self-hosted-cost-per-token-assumptions.md
+      - "009 GPU cost-safety extends to training": adr/009-gpu-cost-safety-extends-to-training.md
+      - "010 Unified training job contract": adr/010-unified-training-job-contract.md
+      - "011 LoRA / PEFT adapter serving": adr/011-lora-peft-adapter-serving-integration.md
+      - "012 Data versioning with DVC": adr/012-data-versioning-with-dvc.md
+      - "013 Pluggable experiment tracking": adr/013-pluggable-experiment-tracking.md
+      - "014 LangGraph advisor non-fabrication": adr/014-langgraph-advisor-non-fabrication-scope.md
   - Components:
       - Contracts: components/contracts.md
       - Model contract: components/model-contract.md
@@ -71,6 +77,9 @@ nav:
       - serving/triton: components/serving-triton.md
       - serving/vllm: components/serving-vllm.md
       - serving/kserve: components/serving-kserve.md
+      - Training: components/training.md
+      - Experiment tracking: components/experiment-tracking.md
+      - Advisor: components/advisor.md
       - Gateway: components/gateway.md
       - Observability: components/observability.md
       - Models: components/models.md
@@ -94,4 +103,7 @@ nav:
       - Kubeflow local kind: runbooks/kubeflow-local-kind.md
       - SageMaker manual: runbooks/sagemaker-manual-run.md
       - TensorRT-LLM build (manual GPU): runbooks/tensorrt-llm-build.md
+      - DeepSpeed GPU mode (manual): runbooks/deepspeed-gpu-mode.md
+      - DVC remote (manual cloud): runbooks/dvc-remote.md
+      - Advisor hosted LLM (manual): runbooks/advisor-hosted-llm.md
   - Benchmarks notes: benchmarks/README.md

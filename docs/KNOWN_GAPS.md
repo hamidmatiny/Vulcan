@@ -1,6 +1,6 @@
 # Known gaps — simulated vs real
 
-Honest inventory as of **v1.1.0 track (phase-17)**. Prefer this over marketing language in READMEs.
+Honest inventory as of **v1.2.0 / phase-22** (commit [`3be5aef`](https://github.com/hamidmatiny/Vulcan/commit/3be5aef)). Prefer this over marketing language in READMEs.
 
 ## Serving & benchmarks
 
@@ -10,6 +10,16 @@ Honest inventory as of **v1.1.0 track (phase-17)**. Prefer this over marketing l
 | `benchmark/results/*-cpu.json` | Laptop/CI latency — **not** capacity claims | Schema + compare script |
 | Gateway routing | Uses those CPU artifacts + static Bedrock pricing | Selection algorithm + health fallback (ADR-006) |
 | KServe | Manifests only in CI; **no** scrape target in compose | Helm chart + kind runbook |
+
+## Training, LoRA, DVC, tracking, advisor (phases 18–22)
+
+| Component | Simulated / scoped | Gap / honesty (ADR) |
+|-----------|--------------------|---------------------|
+| Training backends (`training/{ray-train,fsdp-ddp,deepspeed}`) | CPU `gloo` world_size=2 | Throughput is **not** a GPU capacity planning signal ([ADR-009](adr/009-gpu-cost-safety-extends-to-training.md)) |
+| LoRA/PEFT (`training/fsdp-ddp/lora/`) | CPU fine-tune + structural adapter verify | Not hash-pinned; **not** a quality claim ([ADR-011](adr/011-lora-peft-adapter-serving-integration.md)) |
+| DVC (`dvc.yaml`) | Local filesystem remote in CI | Real cloud remote is **manual ops** ([ADR-012](adr/012-data-versioning-with-dvc.md)) |
+| Experiment tracking (`training/common/tracking.py`) | Self-hosted MLflow `:9014`; W&B `WANDB_MODE=offline` | No cloud MLflow sync; **no live wandb.ai dashboard** in CI ([ADR-013](adr/013-pluggable-experiment-tracking.md)) |
+| Advisor (`advisor/`) | Template + optional local GPT-2-small | Not a hosted-quality LLM; grounded only to tool data at query time ([ADR-014](adr/014-langgraph-advisor-non-fabrication-scope.md)) |
 
 ## Managed cloud
 
@@ -54,3 +64,4 @@ Honest inventory as of **v1.1.0 track (phase-17)**. Prefer this over marketing l
 5. Re-measure Bedrock latency/price from the account (overwrite `pricing-reference.json` with still-labeled measurements).
 6. Run Kubeflow train→eval→KServe handoff on the cluster using the existing runbook paths.
 7. Wire Alertmanager to a real receiver; tune error-rate burn alerts from production SLOs.
+8. Optional: hosted-LLM commentary for the advisor (manual only — [runbook](runbooks/advisor-hosted-llm.md)); keep non-fabrication checks.

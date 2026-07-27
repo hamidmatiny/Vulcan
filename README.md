@@ -4,11 +4,11 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 [![Coverage gate](https://img.shields.io/badge/coverage-%E2%89%A565%25-brightgreen)](./.github/workflows/ci.yml)
 
-**Vulcan** is a production-shaped multi-backend model-serving and GPU-orchestration platform — sibling project to [Argus](https://github.com/hamidmatiny/Argus). One serving contract, many runtimes (BentoML, Ray Serve, Triton, vLLM, KServe), with GPU infra that is validated in CI and applied only out-of-band.
+**Vulcan** is a production-shaped multi-backend model-serving **and training** platform — sibling project to [Argus](https://github.com/hamidmatiny/Argus). One serving contract, many runtimes (BentoML, Ray Serve, Triton, vLLM, KServe); distributed training / LoRA; MLflow + W&B tracking; DVC; and a tool-grounded LangGraph advisor — with GPU infra validated in CI and applied only out-of-band.
 
 **Docs:** `make docs-serve` (MkDocs) · [DEMO](./docs/DEMO_SCRIPT.md) · [Case study](./docs/CASE_STUDY.md) · [Known gaps](./docs/KNOWN_GAPS.md) · [ADRs](./docs/adr/) · [CHANGELOG](./CHANGELOG.md)
 
-**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15). **main** continues the **v1.2.0 track** (phases 18–20: training, LoRA/PEFT, DVC; no `v1.2.0` tag yet). Phase 16–17 (v1.1.0 track) remain on main without a `v1.1.0` tag.
+**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15). Phases **16–22** (the full v1.1.0 + v1.2.0 tracks: advanced GPU packaging, cost-per-token, training backends, LoRA/PEFT, DVC, experiment tracking, LangGraph advisor) are **complete on `main` as of [`3be5aef`](https://github.com/hamidmatiny/Vulcan/commit/3be5aef)** — `CHANGELOG.md` records **`[1.2.0]`**. No `v1.1.0` or `v1.2.0` Git tag has been cut yet.
 
 | ADR | Decision |
 |-----|----------|
@@ -50,15 +50,22 @@ Advanced GPU serving (phase-16): [`serving/vllm/gpu-variants/`](./serving/vllm/g
 ```mermaid
 flowchart LR
   Client["clients / console"] --> GW["gateway"]
+  Client --> Adv["advisor/\nLangGraph"]
   GW --> Contract["model-contract\n/health /metrics /v1/infer"]
   Contract --> Bento["serving/bentoml"]
   Contract --> Ray["serving/ray-serve"]
   Contract --> Triton["serving/triton\n(+ tensorrt-llm)"]
   Contract --> VLLM["serving/vllm\n(+ gpu-variants)"]
   Contract --> KServe["serving/kserve"]
+  TrainContract["training-job-contract"] --> Train["training/\nray-train · fsdp-ddp · deepspeed"]
+  Train --> Track["tracking.py\nMLflow / W&B offline"]
   GPU["gpu-infra + autoscaling"] -.->|"schedule / scale"| Contract
   Obs["observability\n(+ gpu-metrics / cost-exporter)"] --> GW
   Obs --> Contract
+  Bench["benchmark/results"] --> GW
+  Bench --> Adv
+  Obs --> Adv
+  GW --> Adv
 ```
 
 Full design: [ARCHITECTURE.md](./ARCHITECTURE.md)
