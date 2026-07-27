@@ -6,7 +6,9 @@
 
 **Vulcan** is a production-shaped multi-backend model-serving and GPU-orchestration platform — sibling project to [Argus](https://github.com/hamidmatiny/Argus). One serving contract, many runtimes (BentoML, Ray Serve, Triton, vLLM, KServe), with GPU infra that is validated in CI and applied only out-of-band.
 
-**Docs:** `make docs-serve` (MkDocs) · [DEMO](./docs/DEMO_SCRIPT.md) · [Case study](./docs/CASE_STUDY.md) · [Known gaps](./docs/KNOWN_GAPS.md) · [ADRs](./docs/adr/) · [CHANGELOG](./CHANGELOG.md) · tag **v1.0.0**
+**Docs:** `make docs-serve` (MkDocs) · [DEMO](./docs/DEMO_SCRIPT.md) · [Case study](./docs/CASE_STUDY.md) · [Known gaps](./docs/KNOWN_GAPS.md) · [ADRs](./docs/adr/) · [CHANGELOG](./CHANGELOG.md)
+
+**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15). **main** continues the **v1.1.0 track** (phases 16–17 landed; no `v1.1.0` tag yet).
 
 | ADR | Decision |
 |-----|----------|
@@ -16,8 +18,8 @@
 | [ADR-004](./docs/adr/004-multi-tenant-gpu-scheduling-with-kueue.md) | Multi-tenant GPU scheduling with Kueue |
 | [ADR-005](./docs/adr/005-spot-gpu-strategy.md) | Spot GPU strategy (cost, checkpoint contract, workload fit) |
 | [ADR-006](./docs/adr/006-routing-policy.md) | Routing policy (benchmark-driven selection + fallback) |
-| [ADR-007](./docs/adr/007-advanced-gpu-serving-techniques-scope.md) | Advanced GPU serving (quantization / speculative / TRT-LLM scope) |
-| [ADR-008](./docs/adr/008-self-hosted-cost-per-token-assumptions.md) | Self-hosted cost-per-token ($/GPU-hour assumptions) |
+| [ADR-007](./docs/adr/007-advanced-gpu-serving-techniques-scope.md) | Advanced GPU serving scope — GPTQ/AWQ/FP8 packs, speculative decoding docs, TensorRT-LLM templates; validate-only in CI (no invented tokens/s) |
+| [ADR-008](./docs/adr/008-self-hosted-cost-per-token-assumptions.md) | Self-hosted cost-per-token — `$/GPU-hour` assumptions for phase-7 instance types × benchmark throughput; labeled assumptions, not invoices |
 
 Managed training/hosting comparison: [`pipelines/sagemaker/`](./pipelines/sagemaker/) (moto in CI; [manual runbook](./docs/runbooks/sagemaker-manual-run.md)).
 
@@ -27,7 +29,9 @@ Training→serving loop: [`pipelines/kubeflow/`](./pipelines/kubeflow/) (KFP + T
 
 Routing gateway: [`gateway/`](./gateway/) on **:9007** (ADR-006; recorded benchmarks + Bedrock pricing; explainable fallback).
 
-Observability: [`observability/`](./observability/) — Prometheus **:9008**, Grafana **:9009**, Tempo **:9010** (`make up-observability`).
+Observability: [`observability/`](./observability/) — Prometheus **:9008**, Grafana **:9009**, Tempo **:9010** (`make up-observability`). Phase-17 adds **cost-per-token** panels (Bedrock pricing-reference + ADR-008 `$/GPU-hour` math) and GPU utilization via real DCGM Helm under [`observability/gpu-metrics/`](./observability/gpu-metrics/) for phase-7 pools, with a **LIVE-SYNTHETIC** DCGM-shaped exporter for compose/CI.
+
+Advanced GPU serving (phase-16): [`serving/vllm/gpu-variants/`](./serving/vllm/gpu-variants/) (GPTQ/AWQ/FP8 resource manifests) and [`serving/triton/tensorrt-llm/`](./serving/triton/tensorrt-llm/) (TensorRT-LLM `config.pbtxt` + Dockerfile + [runbook](./docs/runbooks/tensorrt-llm-build.md)) — schema/`config.pbtxt` lint in CI only; no GPU build or invented throughput ([ADR-007](./docs/adr/007-advanced-gpu-serving-techniques-scope.md)).
 
 ---
 
@@ -39,11 +43,11 @@ flowchart LR
   GW --> Contract["model-contract\n/health /metrics /v1/infer"]
   Contract --> Bento["serving/bentoml"]
   Contract --> Ray["serving/ray-serve"]
-  Contract --> Triton["serving/triton"]
-  Contract --> VLLM["serving/vllm"]
+  Contract --> Triton["serving/triton\n(+ tensorrt-llm)"]
+  Contract --> VLLM["serving/vllm\n(+ gpu-variants)"]
   Contract --> KServe["serving/kserve"]
   GPU["gpu-infra + autoscaling"] -.->|"schedule / scale"| Contract
-  Obs["observability"] --> GW
+  Obs["observability\n(+ gpu-metrics / cost-exporter)"] --> GW
   Obs --> Contract
 ```
 
@@ -76,16 +80,21 @@ Pinned models: [`models/MANIFEST.md`](./models/MANIFEST.md) · [BentoML](./servi
 
 ```text
 contracts/model-contract/     OpenAPI + JSON Schema (platform contract)
-serving/{common,bentoml,...}/ Contract-compliant backends
-gateway/                      North-south API surface
+serving/{common,bentoml,ray-serve,triton,vllm,kserve}/
+  vllm/gpu-variants/          GPTQ / AWQ / FP8 resource manifests (phase-16)
+  triton/tensorrt-llm/        TensorRT-LLM template + Dockerfile (phase-16)
+gateway/                      Benchmark-driven routing (:9007)
 benchmark/                    Harnesses (CPU local; GPU manual)
 gpu-infra/{gpu-operator,mig,kueue}/
 autoscaling/{karpenter,checkpointing}/
 pipelines/{kubeflow,sagemaker}/
 bedrock-gateway/
 infra/{terraform,helm,argocd}/
-observability/  console/  models/
-docs/{adr,benchmarks}/  tests/e2e/
+observability/                Prometheus / Grafana / Tempo / OTel
+  cost-exporter/              Routing cost + cost-per-token (ADR-006/008)
+  gpu-metrics/                Real DCGM Helm/scrape + synthetic-dcgm
+console/  models/
+docs/{adr,benchmarks,runbooks}/  tests/e2e/
 ```
 
 ---
@@ -95,8 +104,6 @@ docs/{adr,benchmarks}/  tests/e2e/
 - **Commits:** `phase-N: <summary>` or `fix(<component>): <summary>` only
 - **ADRs** for architectural decisions under `docs/adr/`
 - **README per component**
-- **CI from day one** — lint, tests, ADR gate for `contracts/` + `gpu-infra/`
+- **CI from day one** — lint, tests, ADR gate for `contracts/`, `gpu-infra/`, advanced GPU paths, and cost/GPU-metrics assumptions
 - **≥ 65% coverage** on gated packages
 - **Cursor rules** in [`.cursor/rules/`](./.cursor/rules/) enforce contract-first + CPU-fallback automatically
-
-Phase 8 status: serving adapters + KServe + GPU Operator/MIG + EKS Terraform + Kueue multi-tenant queues (validate-only in CI).
