@@ -7,7 +7,7 @@
   "opset": 17,
   "files": {
     "imagenet_classes.json": "47c75d27d7a4c62415c9c1c4536ac98c68e1417b880987dbc5b166c3b7ebf1d9",
-    "model.onnx": "7b7aa3632a82316840b62325e940c392f1db84b80d0eef30a3c06e0dc303c10f",
+    "model.onnx": "1ab981b6903b1be99cbf97cbb581d31c595c9dc6b899ea7e01a489e364b333e7",
     "preprocess.json": "f9df32d8b268b1a17b79ea9d35a24beb63bb3dd7a0be0917a10d86138962d49b"
   }
 }

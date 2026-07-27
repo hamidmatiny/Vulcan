@@ -11,8 +11,8 @@ Cross-backend benchmarks are only legitimate when all backends load these pins.
 - CI never downloads GPU builds or runs on GPU hardware (ADR-002).
 - Weights live under `models/artifacts/` (gitignored binaries); this manifest is committed.
 - Re-export with `python models/scripts/export_*.py` then `python models/scripts/write_manifest.py --require-artifacts`.
-- ONNX vision export requires `PYTHONHASHSEED=0` and single-threaded export (`torch.set_num_threads(1)`) for byte-reproducible digests.
-- Vision ONNX digests are pinned from the **CPU** torch wheel (`download.pytorch.org/whl/cpu`); installing the default CUDA PyPI torch first without `--force-reinstall` yields a different graph.
+- ONNX vision export requires `PYTHONHASHSEED=0`, single-threaded export (`torch.set_num_threads(1)`), and `do_constant_folding=False` for byte-reproducible digests.
+- Vision ONNX digests are pinned from the **CPU** torch wheel (`download.pytorch.org/whl/cpu`); install with `--force-reinstall --no-deps` after requirements so CUDA PyPI torch is replaced without breaking numpy.
 
 ## Models
 
@@ -47,12 +47,12 @@ Cross-backend benchmarks are only legitimate when all backends load these pins.
 - **Export format:** `onnx`
 - **Artifact dir:** `artifacts/vision/resnet18/`
 - **Primary file:** `model.onnx`
-- **Primary sha256:** `7b7aa3632a82316840b62325e940c392f1db84b80d0eef30a3c06e0dc303c10f`
+- **Primary sha256:** `1ab981b6903b1be99cbf97cbb581d31c595c9dc6b899ea7e01a489e364b333e7`
 
 | File | sha256 |
 |------|--------|
 | `imagenet_classes.json` | `47c75d27d7a4c62415c9c1c4536ac98c68e1417b880987dbc5b166c3b7ebf1d9` |
-| `model.onnx` | `7b7aa3632a82316840b62325e940c392f1db84b80d0eef30a3c06e0dc303c10f` |
+| `model.onnx` | `1ab981b6903b1be99cbf97cbb581d31c595c9dc6b899ea7e01a489e364b333e7` |
 | `preprocess.json` | `f9df32d8b268b1a17b79ea9d35a24beb63bb3dd7a0be0917a10d86138962d49b` |
 
 > ImageNet-pretrained ResNet-18 exported to ONNX for Triton/ONNX Runtime and other backends.

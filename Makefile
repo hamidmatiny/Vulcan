@@ -261,8 +261,8 @@ models-export: ## Fetch/export pinned reference models (CPU)
 	$(PYTHON) -m venv $(MODELS_VENV)
 	$(MODELS_VENV)/bin/pip install -U pip
 	$(MODELS_VENV)/bin/pip install -r models/scripts/requirements.txt
-	# Force CPU wheels — a prior CUDA PyPI torch install is "already satisfied" otherwise and changes ONNX bytes.
-	$(MODELS_VENV)/bin/pip install --force-reinstall torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
+	# Force CPU wheels without reinstalling shared deps (numpy ABI must stay intact).
+	$(MODELS_VENV)/bin/pip install --force-reinstall --no-deps torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu
 	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/export_llm.py
 	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/export_vision.py
 	PYTHONHASHSEED=0 $(MODELS_VENV)/bin/python models/scripts/write_manifest.py --require-artifacts

@@ -69,6 +69,8 @@ def main() -> int:
     opset = int(export["opset"])
 
     print(f"Exporting ONNX opset={opset} → {onnx_path}", file=sys.stderr)
+    # do_constant_folding=False: folding order is a known source of cross-process
+    # ONNX byte drift even with PYTHONHASHSEED=0 + single-threaded export.
     torch.onnx.export(
         model,
         dummy,
@@ -80,7 +82,7 @@ def main() -> int:
             "logits": {0: "batch"},
         },
         opset_version=opset,
-        do_constant_folding=True,
+        do_constant_folding=False,
     )
 
     # Sidecar: labels + preprocess so backends share the same contract inputs.
