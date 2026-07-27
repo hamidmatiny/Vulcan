@@ -75,6 +75,7 @@ serving/triton/.venv/
 serving/vllm/.venv/
 training/**/.venv/
 training/results/
+advisor/.venv/
 .dvc-remote/
 models/.venv-dvc/
 .mlflow/

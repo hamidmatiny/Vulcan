@@ -2,15 +2,41 @@
 
 All notable changes to Vulcan are documented here.
 
-## [Unreleased]
+## [1.2.0] — 2026-07-27
+
+v1.2.0 close-out: advanced GPU packaging (validate-only), cost-per-token, training backends,
+LoRA/PEFT, DVC for deterministic exports, pluggable experiment tracking, and a tool-grounded
+LangGraph advisor with non-fabrication CI. Feature commits:
+
+### Phase commits (16–22)
+
+| Phase | Commit | Summary |
+|------:|--------|---------|
+| 16 | [`96cb7e1`](https://github.com/hamidmatiny/Vulcan/commit/96cb7e1) | Advanced GPU serving — GPTQ/AWQ/FP8 + TensorRT-LLM templates |
+| 17 | [`164ef1a`](https://github.com/hamidmatiny/Vulcan/commit/164ef1a) | Cost-per-token + GPU utilization tracking |
+| 18 | [`179a1cc`](https://github.com/hamidmatiny/Vulcan/commit/179a1cc) | Training backends + training-job contract |
+| 19 | [`21d590b`](https://github.com/hamidmatiny/Vulcan/commit/21d590b) | LoRA/PEFT adapter fine-tuning + transparent serving |
+| 20 | [`baa2ba4`](https://github.com/hamidmatiny/Vulcan/commit/baa2ba4) | DVC for deterministic model exports |
+| 21 | [`3e81029`](https://github.com/hamidmatiny/Vulcan/commit/3e81029) | Pluggable experiment tracking (MLflow + W&B offline) |
+| 22 | [`35f282d`](https://github.com/hamidmatiny/Vulcan/commit/35f282d) | LangGraph advisor — tool-grounded, non-fabrication |
+
+### Phase 22 — LangGraph advisor (tool-grounded, non-fabrication)
+
+- `advisor/`: LangGraph with `query_prometheus`, `read_benchmark_results`, `query_routing_history`, `recommend` (ADR-014)
+- Synthesis via template + optional pinned `reference-tiny-llm`; no paid LLM API in CI
+- CI asserts every numeric/backend claim in the answer appears in that run’s tool evidence (extends ADR-007)
 
 ### Phase 21 — Pluggable experiment tracking (MLflow + W&B offline)
+
+*Feature commit [`3e81029`](https://github.com/hamidmatiny/Vulcan/commit/3e81029); artifact-serve fix [`62510a7`](https://github.com/hamidmatiny/Vulcan/commit/62510a7).*
 
 - `training/common/tracking.py`: `ExperimentTracker` interface; `MlflowTracker` + `WandbTracker` (offline-only); default `VULCAN_TRACKER_BACKEND=none` (ADR-013)
 - FSDP/DDP + LoRA report existing loss/throughput through the interface (no recomputation)
 - Compose MLflow on host port **9014**; CI asserts MLflow API metrics + W&B `offline-run-*` dir (never wandb.ai)
 
 ### Phase 20 — DVC data versioning (deterministic model exports)
+
+*Feature commit [`baa2ba4`](https://github.com/hamidmatiny/Vulcan/commit/baa2ba4).*
 
 - `dvc.yaml` wraps existing `export_llm.py` / `export_vision.py`; local filesystem remote only in CI (ADR-012)
 - Cross-check: DVC-tracked primary outs' SHA256 must match `sha256sums.txt` / MANIFEST (does not replace MANIFEST)
@@ -19,12 +45,16 @@ All notable changes to Vulcan are documented here.
 
 ### Phase 19 — LoRA / PEFT (adapter fine-tuning + transparent serving)
 
+*Feature commit [`21d590b`](https://github.com/hamidmatiny/Vulcan/commit/21d590b).*
+
 - `LoraFineTuneSpec` / `LoraFineTuneResult` in `contracts/training-job-contract/` (ADR-011; extends ADR-010)
 - `training/fsdp-ddp/lora/`: CPU PEFT fine-tune on pinned `reference-tiny-llm`; structural adapter verify (no SHA256 pin — ADR-009)
 - BentoML optionally serves `reference-tiny-llm-lora-demo` through unchanged `/v1/infer` (ADR-001)
 - CI: logits delta proof (base vs base+adapter) on a fixed prompt
 
 ### Phase 18 — Training backends (v1.2.0 track)
+
+*Feature commit [`179a1cc`](https://github.com/hamidmatiny/Vulcan/commit/179a1cc).*
 
 - `contracts/training-job-contract/`: `TrainingJobSpec` / `TrainingJobResult` OpenAPI + JSON Schema (ADR-010)
 - `training/{ray-train,fsdp-ddp,deepspeed}/`: CPU-simulated distributed training (`gloo`, world_size=2; ADR-009)
@@ -34,12 +64,16 @@ All notable changes to Vulcan are documented here.
 
 ### Phase 17 — Cost-per-token and GPU utilization tracking
 
+*Feature commit [`164ef1a`](https://github.com/hamidmatiny/Vulcan/commit/164ef1a).*
+
 - `observability/gpu-metrics/`: real DCGM-exporter Helm values + cluster Prometheus scrape for phase-7 pools; synthetic DCGM-shaped exporter for compose/CI
 - Cost-exporter: `vulcan_estimated_cost_usd_per_token` from Bedrock `pricing-reference.json` and ADR-008 `$/GPU-hour` × benchmark throughput (phase-7 instance types only)
 - Grafana: cost-per-token + LIVE-SYNTHETIC GPU util panels; LIVE vs PLACEHOLDER table updated
 - [ADR-008](./docs/adr/008-self-hosted-cost-per-token-assumptions.md); KNOWN_GAPS #2 closed; CI smoke asserts cost-per-token + synthetic DCGM
 
 ### Phase 16 — Advanced GPU serving (v1.1.0 track)
+
+*Feature commit [`96cb7e1`](https://github.com/hamidmatiny/Vulcan/commit/96cb7e1).*
 
 - Extended `serving/vllm/docs/gpu-mode.md`: continuous batching, PagedAttention vs CPU KV, speculative decoding pairs
 - `serving/vllm/gpu-variants/{gptq,awq,fp8}/`: schema-valid resource manifests (`supports_quantization`, declared VRAM envelopes)

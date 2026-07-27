@@ -17,3 +17,4 @@ Short records of the biggest technology choices in Vulcan. Each ADR states the c
 | [011](011-lora-peft-adapter-serving-integration.md) | LoRA / PEFT adapter fine-tuning + transparent serving | Accepted |
 | [012](012-data-versioning-with-dvc.md) | Data versioning with DVC (deterministic exports only) | Accepted |
 | [013](013-pluggable-experiment-tracking.md) | Pluggable experiment tracking (MLflow + W&B offline) | Accepted |
+| [014](014-langgraph-advisor-non-fabrication-scope.md) | LangGraph advisor non-fabrication scope | Accepted |

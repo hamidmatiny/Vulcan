@@ -21,6 +21,7 @@ ADR_TRAINING_CONTRACT="010-unified-training-job-contract.md"
 ADR_LORA_PEFT="011-lora-peft-adapter-serving-integration.md"
 ADR_DVC="012-data-versioning-with-dvc.md"
 ADR_TRACKING="013-pluggable-experiment-tracking.md"
+ADR_ADVISOR="014-langgraph-advisor-non-fabrication-scope.md"
 
 CHANGED_FILES=""
 if [[ -n "${ADR_GATE_CHANGED_FILES:-}" ]]; then
@@ -33,7 +34,7 @@ elif [[ -n "${GITHUB_BASE_REF:-}" ]]; then
 fi
 
 if [[ -z "${CHANGED_FILES}" ]]; then
-  CHANGED_FILES="$(git ls-files contracts gpu-infra autoscaling gateway serving/vllm/gpu-variants serving/triton/tensorrt-llm observability/gpu-metrics observability/cost-exporter/gpu-hour-assumptions.json training dvc.yaml dvc.lock .dvc models/scripts docs/adr/012-data-versioning-with-dvc.md docs/runbooks/dvc-remote.md docs/adr/013-pluggable-experiment-tracking.md || true)"
+  CHANGED_FILES="$(git ls-files contracts gpu-infra autoscaling gateway serving/vllm/gpu-variants serving/triton/tensorrt-llm observability/gpu-metrics observability/cost-exporter/gpu-hour-assumptions.json training advisor dvc.yaml dvc.lock .dvc models/scripts docs/adr/012-data-versioning-with-dvc.md docs/runbooks/dvc-remote.md docs/adr/013-pluggable-experiment-tracking.md docs/adr/014-langgraph-advisor-non-fabrication-scope.md docs/runbooks/advisor-hosted-llm.md || true)"
 fi
 
 touched_contracts=0
@@ -48,6 +49,7 @@ touched_training=0
 touched_lora=0
 touched_dvc=0
 touched_tracking=0
+touched_advisor=0
 
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
@@ -99,6 +101,11 @@ while IFS= read -r path; do
   case "$path" in
     training/common/tracking.py|training/common/tracking*|training/common/verify_tracking.py|training/common/requirements-tracking.txt|training/common/tests/test_tracking.py|training/common/Dockerfile.mlflow|docs/adr/013-pluggable-experiment-tracking.md)
       touched_tracking=1
+      ;;
+    esac
+    case "$path" in
+    advisor|advisor/*|docs/adr/014-langgraph-advisor-non-fabrication-scope.md|docs/runbooks/advisor-hosted-llm.md)
+      touched_advisor=1
       ;;
     esac
 done <<< "$CHANGED_FILES"
@@ -166,11 +173,15 @@ if [[ "$touched_tracking" -eq 1 ]]; then
   check_adr "training/common/tracking*|verify_tracking" "$ADR_TRACKING"
 fi
 
-if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 && "$touched_autoscaling" -eq 0 && "$touched_gateway" -eq 0 && "$touched_advanced_gpu" -eq 0 && "$touched_cost_token" -eq 0 && "$touched_training" -eq 0 && "$touched_lora" -eq 0 && "$touched_dvc" -eq 0 && "$touched_tracking" -eq 0 ]]; then
+if [[ "$touched_advisor" -eq 1 ]]; then
+  check_adr "advisor/" "$ADR_ADVISOR"
+fi
+
+if [[ "$touched_contracts" -eq 0 && "$touched_gpu_infra" -eq 0 && "$touched_autoscaling" -eq 0 && "$touched_gateway" -eq 0 && "$touched_advanced_gpu" -eq 0 && "$touched_cost_token" -eq 0 && "$touched_training" -eq 0 && "$touched_lora" -eq 0 && "$touched_dvc" -eq 0 && "$touched_tracking" -eq 0 && "$touched_advisor" -eq 0 ]]; then
   echo "ADR gate skip: no changes under gated paths"
 fi
 
-if [[ "$touched_contracts" -eq 1 || "$touched_gpu_infra" -eq 1 || "$touched_autoscaling" -eq 1 || "$touched_gateway" -eq 1 || "$touched_advanced_gpu" -eq 1 || "$touched_cost_token" -eq 1 || "$touched_training" -eq 1 || "$touched_lora" -eq 1 || "$touched_dvc" -eq 1 || "$touched_tracking" -eq 1 ]]; then
+if [[ "$touched_contracts" -eq 1 || "$touched_gpu_infra" -eq 1 || "$touched_autoscaling" -eq 1 || "$touched_gateway" -eq 1 || "$touched_advanced_gpu" -eq 1 || "$touched_cost_token" -eq 1 || "$touched_training" -eq 1 || "$touched_lora" -eq 1 || "$touched_dvc" -eq 1 || "$touched_tracking" -eq 1 || "$touched_advisor" -eq 1 ]]; then
   if [[ ! -f "${ADR_DIR}/index.md" ]]; then
     echo "ADR gate FAIL: ${ADR_DIR}/index.md is missing"
     fail=1

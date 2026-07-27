@@ -25,6 +25,7 @@
 | [ADR-011](./docs/adr/011-lora-peft-adapter-serving-integration.md) | LoRA / PEFT — fine-tune job type + BentoML base+adapter via unchanged `/v1/infer`; structural verify, no adapter hash pins |
 | [ADR-012](./docs/adr/012-data-versioning-with-dvc.md) | DVC for deterministic model exports — local remote in CI; MANIFEST cross-check; never track training/adapters by hash |
 | [ADR-013](./docs/adr/013-pluggable-experiment-tracking.md) | Pluggable experiment tracking — MLflow self-hosted (:9014) + W&B offline-only (moto-style; no wandb.ai in CI) |
+| [ADR-014](./docs/adr/014-langgraph-advisor-non-fabrication-scope.md) | LangGraph advisor — tool-grounded recommendations only; non-fabrication extends ADR-007; pinned local LLM, no paid API in CI |
 
 Managed training/hosting comparison: [`pipelines/sagemaker/`](./pipelines/sagemaker/) (moto in CI; [manual runbook](./docs/runbooks/sagemaker-manual-run.md)).
 
@@ -37,6 +38,8 @@ Routing gateway: [`gateway/`](./gateway/) on **:9007** (ADR-006; recorded benchm
 Observability: [`observability/`](./observability/) — Prometheus **:9008**, Grafana **:9009**, Tempo **:9010** (`make up-observability`). Phase-17 adds **cost-per-token** panels (Bedrock pricing-reference + ADR-008 `$/GPU-hour` math) and GPU utilization via real DCGM Helm under [`observability/gpu-metrics/`](./observability/gpu-metrics/) for phase-7 pools, with a **LIVE-SYNTHETIC** DCGM-shaped exporter for compose/CI. Phase-18 adds **`$/training-step`** from `training/results/` × the same assumptions file.
 
 Training (phase-18/19/21): [`training/`](./training/) — Ray Train, FSDP/DDP, and DeepSpeed behind [`contracts/training-job-contract/`](./contracts/training-job-contract/) (ADR-010). LoRA/PEFT fine-tune under [`training/fsdp-ddp/lora/`](./training/fsdp-ddp/lora/) with BentoML `reference-tiny-llm-lora-demo` serving (ADR-011). Experiment tracking via [`training/common/tracking.py`](./training/common/tracking.py) (ADR-013; `VULCAN_TRACKER_BACKEND=none|mlflow|wandb`). CI runs CPU only (ADR-009); optional status HTTP on **:9011–:9013** and MLflow on **:9014** (`docker compose --profile training up`).
+
+Advisor (phase-22 / v1.2.0 close-out): [`advisor/`](./advisor/) — LangGraph tool-grounded routing/cost advisor (ADR-014). Tools query live Prometheus, `benchmark/results/*.json`, and gateway `routing`; CI asserts every number in the answer appears in that run’s tool evidence. No hosted LLM in CI.
 
 Advanced GPU serving (phase-16): [`serving/vllm/gpu-variants/`](./serving/vllm/gpu-variants/) (GPTQ/AWQ/FP8 resource manifests) and [`serving/triton/tensorrt-llm/`](./serving/triton/tensorrt-llm/) (TensorRT-LLM `config.pbtxt` + Dockerfile + [runbook](./docs/runbooks/tensorrt-llm-build.md)) — schema/`config.pbtxt` lint in CI only; no GPU build or invented throughput ([ADR-007](./docs/adr/007-advanced-gpu-serving-techniques-scope.md)).
 
@@ -91,6 +94,7 @@ serving/{common,bentoml,ray-serve,triton,vllm,kserve}/
   vllm/gpu-variants/          GPTQ / AWQ / FP8 resource manifests (phase-16)
   triton/tensorrt-llm/        TensorRT-LLM template + Dockerfile (phase-16)
 gateway/                      Benchmark-driven routing (:9007)
+advisor/                      LangGraph tool-grounded advisor (ADR-014)
 benchmark/                    Harnesses (CPU local; GPU manual)
 gpu-infra/{gpu-operator,mig,kueue}/
 autoscaling/{karpenter,checkpointing}/

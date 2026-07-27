@@ -52,6 +52,7 @@ jobs:
       lora_peft_gate: ${{ steps.filter.outputs.lora_peft_gate }}
       dvc_gate: ${{ steps.filter.outputs.dvc_gate }}
       tracking_gate: ${{ steps.filter.outputs.tracking_gate }}
+      advisor_gate: ${{ steps.filter.outputs.advisor_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -196,6 +197,10 @@ jobs:
               - 'training/fsdp-ddp/lora/train_lora.py'
               - 'docs/adr/013-pluggable-experiment-tracking.md'
               - 'docker-compose.yml'
+            advisor_gate:
+              - 'advisor/**'
+              - 'docs/adr/014-langgraph-advisor-non-fabrication-scope.md'
+              - 'docs/runbooks/advisor-hosted-llm.md'
 
   lint:
     name: Lint
@@ -232,6 +237,11 @@ jobs:
           test -f docs/adr/011-lora-peft-adapter-serving-integration.md
           test -f docs/adr/012-data-versioning-with-dvc.md
           test -f docs/adr/013-pluggable-experiment-tracking.md
+          test -f docs/adr/014-langgraph-advisor-non-fabrication-scope.md
+          test -f docs/runbooks/advisor-hosted-llm.md
+          test -f advisor/graph.py
+          test -f advisor/non_fabrication.py
+          test -f advisor/verify_live.py
           test -f models/MANIFEST.md
           test -f models/pins.json
           test -f dvc.yaml
@@ -1356,6 +1366,72 @@ jobs:
       - name: Tear down MLflow
         if: always()
         run: docker compose --profile training stop mlflow || true
+
+  advisor:
+    name: Advisor · LangGraph tool-grounded non-fabrication
+    needs: changes
+    if: needs.changes.outputs.advisor_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Export pinned reference models (CPU)
+        run: |
+          python -m pip install -U pip
+          python -m venv models/.venv
+          models/.venv/bin/pip install -r models/scripts/requirements.txt
+          models/.venv/bin/pip install --force-reinstall --no-deps torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
+          (cd models/scripts && ../.venv/bin/python export_llm.py)
+          (cd models/scripts && ../.venv/bin/python verify_manifest.py)
+      - name: Build + start bentoml, gateway, prometheus cost stack
+        run: |
+          docker compose build bentoml gateway cost-exporter synthetic-dcgm
+          docker compose up -d bentoml gateway \
+            alertmanager blackbox cost-exporter synthetic-dcgm prometheus
+      - name: Wait for gateway + prometheus + cost series
+        run: |
+          make wait-for-health WAIT_PORT=${{ env.VULCAN_GATEWAY_PORT }}
+          for i in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:${VULCAN_PROMETHEUS_PORT}/-/ready" >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS "http://127.0.0.1:${VULCAN_PROMETHEUS_PORT}/-/ready" >/dev/null
+          for i in $(seq 1 45); do
+            if curl -fsS --get "http://127.0.0.1:${VULCAN_PROMETHEUS_PORT}/api/v1/query" \
+              --data-urlencode "query=vulcan_estimated_cost_usd_per_token" \
+              | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["data"]["result"]'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "cost-per-token series not ready" >&2
+          exit 1
+      - name: Install advisor deps
+        run: |
+          python -m pip install -U pip
+          python -m venv advisor/.venv
+          . advisor/.venv/bin/activate
+          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r advisor/requirements.txt
+      - name: Offline unit tests + live non-fabrication graph
+        env:
+          PYTHONHASHSEED: "0"
+          PYTHONPATH: ${{ github.workspace }}
+          VULCAN_ADVISOR_LIVE: "1"
+          VULCAN_PROM_URL: http://127.0.0.1:9008
+          VULCAN_GATEWAY_URL: http://127.0.0.1:9007
+        run: |
+          . advisor/.venv/bin/activate
+          pytest -q advisor/tests
+          python advisor/verify_live.py
+      - name: Tear down
+        if: always()
+        run: docker compose down -v || true
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu / cost-token / training)

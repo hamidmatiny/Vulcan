@@ -2,7 +2,7 @@
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	test-checkpointing test-sagemaker test-bedrock test-gateway \
 	test-cost-exporter test-ray-train test-fsdp-ddp test-deepspeed test-lora-peft \
-	test-tracking docs-serve docs-build up-observability lint \
+	test-tracking test-advisor test-advisor-live docs-serve docs-build up-observability lint \
 	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export \
 	models-verify dvc-repro triton-prepare wait-for-health validate-kserve \
@@ -135,7 +135,7 @@ lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest $(TRAINING_
 	cd $(TRAINING_CONTRACTS_DIR) && .venv/bin/ruff check src tests
 	@echo "==> lint: ruff (serving/common)"
 	cd $(SERVING_COMMON_DIR) && .venv/bin/ruff check src tests
-	@echo "==> lint: ADR presence (001, 002, 009, 010, 011, 012, 013)"
+	@echo "==> lint: ADR presence (001, 002, 009, 010, 011, 012, 013, 014)"
 	@test -f docs/adr/001-unified-model-serving-contract.md
 	@test -f docs/adr/002-gpu-cost-safety-policy.md
 	@test -f docs/adr/009-gpu-cost-safety-extends-to-training.md
@@ -143,6 +143,8 @@ lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest $(TRAINING_
 	@test -f docs/adr/011-lora-peft-adapter-serving-integration.md
 	@test -f docs/adr/012-data-versioning-with-dvc.md
 	@test -f docs/adr/013-pluggable-experiment-tracking.md
+	@test -f docs/adr/014-langgraph-advisor-non-fabrication-scope.md
+	@test -f advisor/graph.py
 	@test -f training/common/tracking.py
 	@test -f dvc.yaml
 	@test -f dvc.lock
@@ -201,6 +203,23 @@ test-tracking: ## Experiment tracker unit tests (MLflow file store + W&B offline
 	$(TRACKING_VENV)/bin/pip install -r training/common/requirements-tracking.txt
 	PYTHONHASHSEED=0 PYTHONPATH=. WANDB_MODE=offline \
 		$(TRACKING_VENV)/bin/pytest -q training/common/tests/test_tracking.py
+
+test-advisor: ## Advisor offline unit tests (benchmarks + non-fabrication; ADR-014)
+	$(PYTHON) -m venv advisor/.venv
+	advisor/.venv/bin/pip install -U pip
+	advisor/.venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+	advisor/.venv/bin/pip install -r advisor/requirements.txt
+	PYTHONHASHSEED=0 PYTHONPATH=. advisor/.venv/bin/pytest -q advisor/tests -k "not live"
+
+test-advisor-live: ## Advisor full graph vs local Prometheus + gateway (ADR-014)
+	@test -n "$${VULCAN_ADVISOR_LIVE}" || (echo "set VULCAN_ADVISOR_LIVE=1 after compose up" >&2; exit 2)
+	$(PYTHON) -m venv advisor/.venv
+	advisor/.venv/bin/pip install -U pip
+	advisor/.venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+	advisor/.venv/bin/pip install -r advisor/requirements.txt
+	PYTHONHASHSEED=0 PYTHONPATH=. VULCAN_ADVISOR_LIVE=1 \
+		advisor/.venv/bin/pytest -q advisor/tests
+	PYTHONHASHSEED=0 PYTHONPATH=. advisor/.venv/bin/python advisor/verify_live.py
 
 reference-server: $(SERVING_COMMON_VENV)/bin/pytest ## Trivial reference server (:9001)
 	$(SERVING_COMMON_VENV)/bin/vulcan-reference-server --host $(REF_HOST) --port $(REF_PORT)

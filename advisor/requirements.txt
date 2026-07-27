@@ -1,0 +1,6 @@
+# Advisor deps (ADR-014). CPU-only; no hosted LLM SDKs.
+# Install torch from the CPU wheel index separately (see Makefile / CI).
+langgraph>=0.2,<0.5
+langchain-core>=0.3,<0.4
+transformers>=4.40,<5
+pytest>=8.0
