@@ -13,8 +13,9 @@ if [[ -f .trivyignore ]]; then
   IGNORE_FILE="--ignorefile .trivyignore"
 fi
 # shellcheck disable=SC2086
+# NGC Triton engine is multi-GB; default 5m Trivy timeout trips "context deadline exceeded".
 trivy image --quiet --scanners vuln --severity CRITICAL --ignore-unfixed \
-  ${IGNORE_FILE} --exit-code 1 "${IMAGE}"
+  --timeout 20m ${IGNORE_FILE} --exit-code 1 "${IMAGE}"
 
 echo "==> Syft SBOM ${IMAGE}"
 syft "${IMAGE}" -o spdx-json="${OUT_DIR}/${SAFE_NAME}.spdx.json" -q
