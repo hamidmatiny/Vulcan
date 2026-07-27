@@ -8,7 +8,7 @@ Release hardening: security scans, docs site, coverage extensions, demo/case-stu
 
 ### Phase 15 — Security hardening, docs site, and v1.0.0 release
 
-*Release commit below; tag `v1.0.0`.*
+*Feature commit [`cba0197`](https://github.com/hamidmatiny/Vulcan/commit/cba0197); tag `v1.0.0` includes the follow-up changelog hash fix.*
 
 - Trivy (CRITICAL, ignore-unfixed) + Syft SBOM on built images: bentoml, ray-serve, triton, triton-engine, vllm, vllm-engine, gateway, cost-exporter
 - Semgrep (`p/python`, `p/golang`) across serving/gateway/pipelines Python + Go
