@@ -6,7 +6,8 @@ All notable changes to Vulcan are documented here.
 
 v1.2.0 close-out: advanced GPU packaging (validate-only), cost-per-token, training backends,
 LoRA/PEFT, DVC for deterministic exports, pluggable experiment tracking, and a tool-grounded
-LangGraph advisor with non-fabrication CI. Feature commits:
+LangGraph advisor with non-fabrication CI. Tag: [`v1.2.0`](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.2.0).
+Feature commits:
 
 ### Phase commits (16–22)
 

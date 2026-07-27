@@ -8,7 +8,7 @@
 
 **Docs:** `make docs-serve` (MkDocs) · [DEMO](./docs/DEMO_SCRIPT.md) · [Case study](./docs/CASE_STUDY.md) · [Known gaps](./docs/KNOWN_GAPS.md) · [ADRs](./docs/adr/) · [CHANGELOG](./CHANGELOG.md)
 
-**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15). Phases **16–22** (the full v1.1.0 + v1.2.0 tracks: advanced GPU packaging, cost-per-token, training backends, LoRA/PEFT, DVC, experiment tracking, LangGraph advisor) are **complete on `main` as of [`3be5aef`](https://github.com/hamidmatiny/Vulcan/commit/3be5aef)** — `CHANGELOG.md` records **`[1.2.0]`**. No `v1.1.0` or `v1.2.0` Git tag has been cut yet.
+**Release state:** tagged **[v1.0.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.0.0)** (phase-15) and **[v1.2.0](https://github.com/hamidmatiny/Vulcan/releases/tag/v1.2.0)** (phases 16–22: advanced GPU packaging, cost-per-token, training backends, LoRA/PEFT, DVC, experiment tracking, LangGraph advisor). No `v1.1.0` tag (phase-17 track shipped on `main` without a separate minor tag).
 
 | ADR | Decision |
 |-----|----------|
