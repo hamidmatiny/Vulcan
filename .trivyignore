@@ -1,0 +1,21 @@
+# Vendor NVIDIA Triton base (nvcr.io/.../tritonserver): linux-libc-dev is userspace
+# kernel *headers* only. The container does not boot this kernel; Trivy still flags
+# "fixed" CVEs against the frozen NGC apt index. Ignore until the base tag is bumped.
+CVE-2025-38724
+CVE-2025-68263
+CVE-2025-71068
+CVE-2026-23216
+CVE-2026-31402
+CVE-2026-31637
+CVE-2026-43011
+CVE-2026-43037
+CVE-2026-43038
+CVE-2026-43185
+CVE-2026-43304
+CVE-2026-43501
+CVE-2026-45988
+CVE-2026-46043
+CVE-2026-46135
+CVE-2026-52955
+CVE-2026-52993
+CVE-2026-53002

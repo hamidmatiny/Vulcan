@@ -8,9 +8,35 @@ import json
 import sys
 from pathlib import Path
 
+import time
+
 from huggingface_hub import hf_hub_download, snapshot_download
+from huggingface_hub.errors import HfHubHTTPError, LocalEntryNotFoundError
 
 from common import ARTIFACTS_ROOT, ensure_dir, load_pins, write_sidecar_hashes
+
+
+def _with_hub_retries(fn, *, attempts: int = 8, label: str) -> None:
+    """Retry Hub calls on 429/5xx; parallel CI jobs share an unauthenticated quota."""
+    delay = 5.0
+    last: BaseException | None = None
+    for i in range(1, attempts + 1):
+        try:
+            fn()
+            return
+        except (HfHubHTTPError, LocalEntryNotFoundError, OSError) as exc:
+            last = exc
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if isinstance(exc, HfHubHTTPError) and status not in (429, 500, 502, 503, 504) and status is not None:
+                raise
+            print(
+                f"{label}: Hub error {exc!r} (attempt {i}/{attempts}); sleep {delay:.0f}s",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+            delay = min(delay * 2, 120.0)
+    assert last is not None
+    raise last
 
 
 def main() -> int:
@@ -45,11 +71,14 @@ def main() -> int:
         "merges.txt",
         "generation_config.json",
     ]
-    snapshot_download(
-        repo_id=repo_id,
-        revision=revision,
-        allow_patterns=allow,
-        local_dir=out_dir,
+    _with_hub_retries(
+        lambda: snapshot_download(
+            repo_id=repo_id,
+            revision=revision,
+            allow_patterns=allow,
+            local_dir=out_dir,
+        ),
+        label="snapshot_download",
     )
 
     # Prefer hub safetensors; if absent, fail clearly (pin must stay on a safetensors revision).
@@ -66,11 +95,14 @@ def main() -> int:
             print(f"Converted {bin_path.name} → {primary.name}", file=sys.stderr)
         else:
             # Last resort: download explicitly
-            hf_hub_download(
-                repo_id=repo_id,
-                revision=revision,
-                filename="model.safetensors",
-                local_dir=out_dir,
+            _with_hub_retries(
+                lambda: hf_hub_download(
+                    repo_id=repo_id,
+                    revision=revision,
+                    filename="model.safetensors",
+                    local_dir=out_dir,
+                ),
+                label="hf_hub_download",
             )
 
     if not primary.is_file():

@@ -13,9 +13,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     VULCAN_MODELS_DIR=/models \
     RAY_DEDUP_LOGS=0 \
     RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0 \
+    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
     PORT=9002 \
     HOST=0.0.0.0 \
     RAY_NUM_CPUS=2
+# PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: Ray Serve <2.56.1 needs FieldDescriptor.label;
+# protobuf's default upb backend drops it.
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl \
