@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulcan.local/schemas/lora-fine-tune-spec.schema.json",
+  "title": "LoraFineTuneSpec",
+  "description": "CPU-dev LoRA / PEFT fine-tune job (ADR-011). Extends the training-job contract alongside TrainingJobSpec.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "job_type",
+    "backend",
+    "base_model_id",
+    "served_model_id",
+    "dataset",
+    "lora",
+    "hyperparameters",
+    "cpu_dev_mode"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "job_type": { "type": "string", "const": "lora_finetune" },
+    "backend": {
+      "type": "string",
+      "enum": ["fsdp-ddp"],
+      "description": "Phase-19 slice: LoRA fine-tune lives under training/fsdp-ddp/lora/"
+    },
+    "base_model_id": {
+      "type": "string",
+      "const": "reference-tiny-llm",
+      "description": "Pinned base model id from models/pins.json"
+    },
+    "served_model_id": {
+      "type": "string",
+      "const": "reference-tiny-llm-lora-demo",
+      "description": "Distinct model_id for base+adapter serving (unchanged /v1/infer)"
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "num_samples", "seq_len"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["synthetic_tokens"] },
+        "num_samples": { "type": "integer", "minimum": 1 },
+        "seq_len": { "type": "integer", "minimum": 4, "maximum": 128 }
+      }
+    },
+    "lora": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["r", "lora_alpha", "target_modules", "lora_dropout"],
+      "properties": {
+        "r": { "type": "integer", "enum": [4, 8] },
+        "lora_alpha": { "type": "integer", "minimum": 1 },
+        "target_modules": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "lora_dropout": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "hyperparameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_steps", "batch_size", "learning_rate"],
+      "properties": {
+        "max_steps": { "type": "integer", "minimum": 1 },
+        "batch_size": { "type": "integer", "minimum": 1 },
+        "learning_rate": { "type": "number", "exclusiveMinimum": 0 },
+        "seed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "cpu_dev_mode": { "type": "boolean" },
+    "output_dir": { "type": "string", "minLength": 1 }
+  }
+}

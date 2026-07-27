@@ -4,6 +4,13 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 19 — LoRA / PEFT (adapter fine-tuning + transparent serving)
+
+- `LoraFineTuneSpec` / `LoraFineTuneResult` in `contracts/training-job-contract/` (ADR-011; extends ADR-010)
+- `training/fsdp-ddp/lora/`: CPU PEFT fine-tune on pinned `reference-tiny-llm`; structural adapter verify (no SHA256 pin — ADR-009)
+- BentoML optionally serves `reference-tiny-llm-lora-demo` through unchanged `/v1/infer` (ADR-001)
+- CI: logits delta proof (base vs base+adapter) on a fixed prompt
+
 ### Phase 18 — Training backends (v1.2.0 track)
 
 - `contracts/training-job-contract/`: `TrainingJobSpec` / `TrainingJobResult` OpenAPI + JSON Schema (ADR-010)

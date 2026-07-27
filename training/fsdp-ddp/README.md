@@ -7,4 +7,6 @@ PYTHONPATH=. python training/fsdp-ddp/train.py --strategy fsdp
 make test-fsdp-ddp
 ```
 
+LoRA / PEFT fine-tune (ADR-011): see [`lora/`](./lora/) and `make test-lora-peft`.
+
 Optional status port: **9012** (`VULCAN_FSDP_DDP_PORT`).

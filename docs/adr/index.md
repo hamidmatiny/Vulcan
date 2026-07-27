@@ -14,3 +14,4 @@ Short records of the biggest technology choices in Vulcan. Each ADR states the c
 | [008](008-self-hosted-cost-per-token-assumptions.md) | Self-hosted cost-per-token assumptions | Accepted |
 | [009](009-gpu-cost-safety-extends-to-training.md) | GPU cost-safety extends to training | Accepted |
 | [010](010-unified-training-job-contract.md) | Unified training job contract | Accepted |
+| [011](011-lora-peft-adapter-serving-integration.md) | LoRA / PEFT adapter fine-tuning + transparent serving | Accepted |

@@ -56,6 +56,23 @@ def validate_training_job_result(instance: dict[str, Any]) -> None:
         raise ValidationError("final_loss must be a finite number")
 
 
+def validate_lora_fine_tune_spec(instance: dict[str, Any]) -> None:
+    """Validate a LoraFineTuneSpec (ADR-011)."""
+    validate_instance(instance, "lora-fine-tune-spec")
+    if instance.get("cpu_dev_mode") is not True:
+        raise ValidationError("cpu_dev_mode must be true for CI/local LoRA fine-tune (ADR-009)")
+
+
+def validate_lora_fine_tune_result(instance: dict[str, Any]) -> None:
+    """Validate a LoraFineTuneResult and structural metrics (ADR-009 / ADR-011)."""
+    validate_instance(instance, "lora-fine-tune-result")
+    metrics = instance["metrics"]
+    if metrics["final_loss"] != metrics["final_loss"]:
+        raise ValidationError("final_loss must be a finite number")
+    if float(metrics["logits_delta_l1"]) <= 0:
+        raise ValidationError("logits_delta_l1 must be > 0 (adapter must change outputs)")
+
+
 def load_json_file(path: Path) -> Any:
     """Load a JSON document from disk."""
     with path.open(encoding="utf-8") as fh:

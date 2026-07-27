@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vulcan.local/schemas/lora-fine-tune-result.schema.json",
+  "title": "LoraFineTuneResult",
+  "description": "LoRA fine-tune result (ADR-011). Adapter verified structurally — never SHA256-pinned (ADR-009).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "job_type",
+    "backend",
+    "base_model_id",
+    "served_model_id",
+    "status",
+    "adapter_dir",
+    "adapter_files",
+    "lora",
+    "metrics",
+    "cpu_dev_mode"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "job_type": { "type": "string", "const": "lora_finetune" },
+    "backend": { "type": "string", "enum": ["fsdp-ddp"] },
+    "base_model_id": { "type": "string", "const": "reference-tiny-llm" },
+    "served_model_id": { "type": "string", "const": "reference-tiny-llm-lora-demo" },
+    "status": { "type": "string", "enum": ["completed", "failed"] },
+    "adapter_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Directory containing adapter_model.safetensors + adapter_config.json"
+    },
+    "adapter_files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter_config", "adapter_weights"],
+      "properties": {
+        "adapter_config": { "type": "string", "const": "adapter_config.json" },
+        "adapter_weights": { "type": "string", "const": "adapter_model.safetensors" }
+      }
+    },
+    "lora": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["r", "lora_alpha", "target_modules"],
+      "properties": {
+        "r": { "type": "integer", "minimum": 1 },
+        "lora_alpha": { "type": "integer", "minimum": 1 },
+        "target_modules": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "loss_curve",
+        "final_loss",
+        "steps_completed",
+        "wall_clock_seconds",
+        "logits_delta_l1"
+      ],
+      "properties": {
+        "loss_curve": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step", "loss"],
+            "properties": {
+              "step": { "type": "integer", "minimum": 1 },
+              "loss": { "type": "number" }
+            }
+          }
+        },
+        "final_loss": { "type": "number" },
+        "steps_completed": { "type": "integer", "minimum": 0 },
+        "wall_clock_seconds": { "type": "number", "minimum": 0 },
+        "logits_delta_l1": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Mean |logits_lora - logits_base| on fixed prompt; structural proof adapter is not a no-op"
+        }
+      }
+    },
+    "cpu_dev_mode": { "type": "boolean" },
+    "verification": {
+      "type": "string",
+      "const": "structural_not_sha256",
+      "description": "Explicit ADR-009 extension: adapters are not hash-pinned"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "job_type": "lora_finetune",
+  "backend": "fsdp-ddp",
+  "base_model_id": "reference-tiny-llm",
+  "served_model_id": "reference-tiny-llm-lora-demo",
+  "dataset": {
+    "kind": "synthetic_tokens",
+    "num_samples": 32,
+    "seq_len": 16
+  },
+  "lora": {
+    "r": 4,
+    "lora_alpha": 8,
+    "target_modules": ["c_attn"],
+    "lora_dropout": 0.0
+  },
+  "hyperparameters": {
+    "max_steps": 4,
+    "batch_size": 2,
+    "learning_rate": 0.001,
+    "seed": 0
+  },
+  "cpu_dev_mode": true,
+  "output_dir": "training/results/lora-demo"
+}

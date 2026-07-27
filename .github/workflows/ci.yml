@@ -49,6 +49,7 @@ jobs:
       ray_train_gate: ${{ steps.filter.outputs.ray_train_gate }}
       fsdp_ddp_gate: ${{ steps.filter.outputs.fsdp_ddp_gate }}
       deepspeed_gate: ${{ steps.filter.outputs.deepspeed_gate }}
+      lora_peft_gate: ${{ steps.filter.outputs.lora_peft_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -160,6 +161,15 @@ jobs:
               - 'docs/adr/009-gpu-cost-safety-extends-to-training.md'
               - 'docs/adr/010-unified-training-job-contract.md'
               - 'docs/runbooks/deepspeed-gpu-mode.md'
+            lora_peft_gate:
+              - 'training/fsdp-ddp/lora/**'
+              - 'contracts/training-job-contract/schemas/lora-*'
+              - 'contracts/training-job-contract/examples/lora-*'
+              - 'serving/bentoml/models_runtime.py'
+              - 'serving/bentoml/service.py'
+              - 'serving/bentoml/resource-requirements-lora-demo.json'
+              - 'serving/bentoml/tests/test_lora_logits_delta.py'
+              - 'docs/adr/011-lora-peft-adapter-serving-integration.md'
 
   lint:
     name: Lint
@@ -193,12 +203,16 @@ jobs:
           test -f docs/adr/008-self-hosted-cost-per-token-assumptions.md
           test -f docs/adr/009-gpu-cost-safety-extends-to-training.md
           test -f docs/adr/010-unified-training-job-contract.md
+          test -f docs/adr/011-lora-peft-adapter-serving-integration.md
           test -f models/MANIFEST.md
           test -f models/pins.json
           test -f contracts/training-job-contract/openapi.yaml
+          test -f contracts/training-job-contract/schemas/lora-fine-tune-spec.schema.json
           test -f training/ray-train/train.py
           test -f training/fsdp-ddp/train.py
+          test -f training/fsdp-ddp/lora/train_lora.py
           test -f training/deepspeed/train.py
+          test -f serving/bentoml/resource-requirements-lora-demo.json
           test -f docs/runbooks/deepspeed-gpu-mode.md
       - name: Port convention (9000–9099)
         run: |
@@ -1169,6 +1183,39 @@ jobs:
           . training/deepspeed/.venv/bin/activate
           python training/deepspeed/train.py --zero-stage 1 --output-dir training/results/deepspeed
           pytest -q training/deepspeed/tests
+
+  lora-peft:
+    name: LoRA/PEFT · CPU fine-tune + logits delta
+    needs: changes
+    if: needs.changes.outputs.lora_peft_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Export pinned reference models (CPU)
+        run: make models-export
+      - name: Install LoRA/PEFT deps
+        run: |
+          python -m pip install -U pip
+          python -m venv training/fsdp-ddp/lora/.venv
+          . training/fsdp-ddp/lora/.venv/bin/activate
+          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r training/fsdp-ddp/lora/requirements.txt
+          pip install -e "contracts/training-job-contract[dev]"
+          pip install -e "contracts/model-contract[dev]"
+      - name: Fine-tune adapter + structural + serving logits proof
+        env:
+          PYTHONHASHSEED: "0"
+          PYTHONPATH: ${{ github.workspace }}
+          CUDA_VISIBLE_DEVICES: ""
+          VULCAN_LORA_ADAPTER_DIR: training/results/lora-demo/adapter
+        run: |
+          . training/fsdp-ddp/lora/.venv/bin/activate
+          python training/fsdp-ddp/lora/train_lora.py --output-dir training/results/lora-demo
+          pytest -q training/fsdp-ddp/lora/tests serving/bentoml/tests/test_lora_logits_delta.py
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu / cost-token / training)

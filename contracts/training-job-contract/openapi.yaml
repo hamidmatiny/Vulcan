@@ -61,9 +61,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TrainingJobResult"
+  /v1/training/lora/spec:
+    post:
+      summary: Validate a LoraFineTuneSpec (ADR-011)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoraFineTuneSpec"
+      responses:
+        "200":
+          description: Spec accepted
+        "400":
+          description: Invalid spec
+  /v1/training/lora/result:
+    get:
+      summary: Last LoraFineTuneResult artifact (when present)
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoraFineTuneResult"
 components:
   schemas:
     TrainingJobSpec:
       $ref: "./schemas/training-job-spec.schema.json"
     TrainingJobResult:
       $ref: "./schemas/training-job-result.schema.json"
+    LoraFineTuneSpec:
+      $ref: "./schemas/lora-fine-tune-spec.schema.json"
+    LoraFineTuneResult:
+      $ref: "./schemas/lora-fine-tune-result.schema.json"

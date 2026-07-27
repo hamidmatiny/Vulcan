@@ -1,7 +1,7 @@
 # Vulcan — root developer targets
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	test-checkpointing test-sagemaker test-bedrock test-gateway \
-	test-cost-exporter test-ray-train test-fsdp-ddp test-deepspeed \
+	test-cost-exporter test-ray-train test-fsdp-ddp test-deepspeed test-lora-peft \
 	docs-serve docs-build up-observability lint \
 	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export \
@@ -133,11 +133,12 @@ lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest $(TRAINING_
 	cd $(TRAINING_CONTRACTS_DIR) && .venv/bin/ruff check src tests
 	@echo "==> lint: ruff (serving/common)"
 	cd $(SERVING_COMMON_DIR) && .venv/bin/ruff check src tests
-	@echo "==> lint: ADR presence (001, 002, 009, 010)"
+	@echo "==> lint: ADR presence (001, 002, 009, 010, 011)"
 	@test -f docs/adr/001-unified-model-serving-contract.md
 	@test -f docs/adr/002-gpu-cost-safety-policy.md
 	@test -f docs/adr/009-gpu-cost-safety-extends-to-training.md
 	@test -f docs/adr/010-unified-training-job-contract.md
+	@test -f docs/adr/011-lora-peft-adapter-serving-integration.md
 	@echo "==> lint: OK"
 
 test-ray-train: ## Ray Train CPU world_size=2 job + pytest
@@ -171,6 +172,21 @@ test-deepspeed: ## DeepSpeed CPU ZeRO-1 world_size=2 + pytest
 		--zero-stage 1 --output-dir training/results/deepspeed
 	PYTHONHASHSEED=0 PYTHONPATH=. DS_ACCELERATOR=cpu CUDA_VISIBLE_DEVICES= \
 		training/deepspeed/.venv/bin/pytest -q training/deepspeed/tests
+
+test-lora-peft: ## LoRA/PEFT fine-tune + base vs adapter logits delta (ADR-011)
+	@test -f models/artifacts/llm/gpt2-small/config.json || $(MAKE) models-export
+	$(PYTHON) -m venv training/fsdp-ddp/lora/.venv
+	training/fsdp-ddp/lora/.venv/bin/pip install -U pip
+	training/fsdp-ddp/lora/.venv/bin/pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+	training/fsdp-ddp/lora/.venv/bin/pip install -r training/fsdp-ddp/lora/requirements.txt
+	training/fsdp-ddp/lora/.venv/bin/pip install -e "contracts/training-job-contract[dev]"
+	training/fsdp-ddp/lora/.venv/bin/pip install -e "contracts/model-contract[dev]"
+	PYTHONHASHSEED=0 PYTHONPATH=. CUDA_VISIBLE_DEVICES= \
+		training/fsdp-ddp/lora/.venv/bin/python training/fsdp-ddp/lora/train_lora.py \
+		--output-dir training/results/lora-demo
+	PYTHONHASHSEED=0 PYTHONPATH=. VULCAN_LORA_ADAPTER_DIR=training/results/lora-demo/adapter \
+		training/fsdp-ddp/lora/.venv/bin/pytest -q \
+		training/fsdp-ddp/lora/tests serving/bentoml/tests/test_lora_logits_delta.py
 
 reference-server: $(SERVING_COMMON_VENV)/bin/pytest ## Trivial reference server (:9001)
 	$(SERVING_COMMON_VENV)/bin/vulcan-reference-server --host $(REF_HOST) --port $(REF_PORT)

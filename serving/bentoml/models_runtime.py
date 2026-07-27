@@ -13,6 +13,7 @@ from typing import Any
 import numpy as np
 
 LLM_MODEL_ID = "reference-tiny-llm"
+LORA_LLM_MODEL_ID = "reference-tiny-llm-lora-demo"
 VISION_MODEL_ID = "reference-tiny-vision"
 
 
@@ -27,11 +28,27 @@ def models_dir() -> Path:
     return _repo_root() / "models" / "artifacts"
 
 
+def lora_adapter_dir() -> Path | None:
+    """Optional PEFT adapter directory (ADR-011). Missing ⇒ LoRA model_id unavailable."""
+    env = os.environ.get("VULCAN_LORA_ADAPTER_DIR")
+    if env:
+        path = Path(env)
+    else:
+        path = models_dir() / "llm" / "lora-demo"
+    if (path / "adapter_config.json").is_file() and (
+        (path / "adapter_model.safetensors").is_file()
+        or (path / "adapter_model.bin").is_file()
+    ):
+        return path
+    return None
+
+
 @dataclass
 class LlmBundle:
     tokenizer: Any
     model: Any
     device: str
+    model_id: str = LLM_MODEL_ID
 
     def generate(self, messages: list[dict[str, str]], max_tokens: int, temperature: float) -> dict[str, Any]:
         # GPT-2 is causal LM — concatenate chat turns into a plain prompt.
@@ -70,6 +87,15 @@ class LlmBundle:
                 "total_tokens": prompt_len + completion,
             },
         }
+
+    def logits_for_prompt(self, prompt: str) -> Any:
+        """Return logits tensor for a fixed prompt (structural LoRA proof)."""
+        import torch
+
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        with torch.no_grad():
+            return self.model(**inputs).logits.detach().cpu()
 
 
 @dataclass
@@ -119,8 +145,17 @@ class VisionBundle:
         }
 
 
-def load_llm(device: str | None = None) -> LlmBundle:
+def _device(device: str | None) -> str:
     import torch
+
+    return device or (
+        "cuda"
+        if torch.cuda.is_available() and os.environ.get("VULCAN_RUNTIME_MODE") == "gpu"
+        else "cpu"
+    )
+
+
+def load_llm(device: str | None = None) -> LlmBundle:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     path = models_dir() / "llm" / "gpt2-small"
@@ -128,14 +163,44 @@ def load_llm(device: str | None = None) -> LlmBundle:
         raise FileNotFoundError(
             f"LLM artifacts missing at {path}. Run `make models-export` or bake models into the image."
         )
-    dev = device or ("cuda" if torch.cuda.is_available() and os.environ.get("VULCAN_RUNTIME_MODE") == "gpu" else "cpu")
+    dev = _device(device)
     tokenizer = AutoTokenizer.from_pretrained(str(path), local_files_only=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(str(path), local_files_only=True)
     model.to(dev)
     model.eval()
-    return LlmBundle(tokenizer=tokenizer, model=model, device=dev)
+    return LlmBundle(tokenizer=tokenizer, model=model, device=dev, model_id=LLM_MODEL_ID)
+
+
+def load_llm_with_lora(adapter_dir: Path | None = None, device: str | None = None) -> LlmBundle:
+    """Load base GPT-2 + PEFT adapter; served as ``reference-tiny-llm-lora-demo``."""
+    from peft import PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    path = models_dir() / "llm" / "gpt2-small"
+    adapter = adapter_dir or lora_adapter_dir()
+    if adapter is None:
+        raise FileNotFoundError(
+            "LoRA adapter missing. Train with `make test-lora-peft` or set VULCAN_LORA_ADAPTER_DIR."
+        )
+    if not (path / "config.json").is_file():
+        raise FileNotFoundError(f"LLM artifacts missing at {path}")
+
+    dev = _device(device)
+    tokenizer = AutoTokenizer.from_pretrained(str(path), local_files_only=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    base = AutoModelForCausalLM.from_pretrained(str(path), local_files_only=True)
+    model = PeftModel.from_pretrained(base, str(adapter))
+    model.to(dev)
+    model.eval()
+    return LlmBundle(
+        tokenizer=tokenizer,
+        model=model,
+        device=dev,
+        model_id=LORA_LLM_MODEL_ID,
+    )
 
 
 def load_vision() -> VisionBundle:

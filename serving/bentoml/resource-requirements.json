@@ -12,5 +12,5 @@
     "max": 60
   },
   "cpu_dev_mode": true,
-  "notes": "CPU-dev Bento serving reference-tiny-llm (GPT-2) + reference-tiny-vision (ResNet-18 ONNX). GPU memory stays 0 in this artifact; see README GPU build for non-CI CUDA Bentos."
+  "notes": "CPU-dev Bento serving reference-tiny-llm (GPT-2) + reference-tiny-vision (ResNet-18 ONNX). Optional LoRA variant: see resource-requirements-lora-demo.json (ADR-011). GPU memory stays 0 in this artifact; see README GPU build for non-CI CUDA Bentos."
 }

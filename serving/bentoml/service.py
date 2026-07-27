@@ -16,11 +16,14 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 
 from models_runtime import (
     LLM_MODEL_ID,
+    LORA_LLM_MODEL_ID,
     VISION_MODEL_ID,
     LlmBundle,
     VisionBundle,
     load_llm,
+    load_llm_with_lora,
     load_vision,
+    lora_adapter_dir,
 )
 
 try:
@@ -58,6 +61,7 @@ instrument_fastapi(app, BACKEND_NAME)
 _state_lock = threading.Lock()
 _ready = False
 _llm: LlmBundle | None = None
+_llm_lora: LlmBundle | None = None
 _vision: VisionBundle | None = None
 
 
@@ -90,12 +94,16 @@ class VulcanService:
     """BentoML Service hosting both phase-1 reference models behind the Vulcan contract."""
 
     def __init__(self) -> None:
-        global _ready, _llm, _vision
+        global _ready, _llm, _llm_lora, _vision
         with _state_lock:
             _ready = False
         # Eager load so /health is accurate after worker start.
         _llm = load_llm()
         _vision = load_vision()
+        # Optional PEFT adapter (ADR-011); absent in default compose images.
+        _llm_lora = None
+        if lora_adapter_dir() is not None:
+            _llm_lora = load_llm_with_lora()
         with _state_lock:
             _ready = True
 
@@ -110,7 +118,10 @@ class VulcanService:
             "model_id": LLM_MODEL_ID,
             "version": BACKEND_VERSION,
             "mode": _runtime_mode(),
-            "detail": f"models={LLM_MODEL_ID},{VISION_MODEL_ID}",
+            "detail": (
+                f"models={LLM_MODEL_ID},{VISION_MODEL_ID}"
+                + (f",{LORA_LLM_MODEL_ID}" if _llm_lora is not None else "")
+            ),
         }
         validate_instance(payload, "health")
         return JSONResponse(status_code=200 if ready else 503, content=payload)
@@ -131,6 +142,7 @@ class VulcanService:
         with _state_lock:
             ready = _ready
             llm = _llm
+            llm_lora = _llm_lora
             vision = _vision
         if not ready or llm is None or vision is None:
             return _error(503, "not_ready", "backend starting")
@@ -157,10 +169,18 @@ class VulcanService:
         started = time.perf_counter()
         try:
             if modality == "llm":
-                if model_id != LLM_MODEL_ID:
+                if model_id == LLM_MODEL_ID:
+                    bundle = llm
+                elif model_id == LORA_LLM_MODEL_ID:
+                    if llm_lora is None:
+                        raise ValueError(
+                            f"{LORA_LLM_MODEL_ID} not loaded (set VULCAN_LORA_ADAPTER_DIR / train adapter)"
+                        )
+                    bundle = llm_lora
+                else:
                     raise ValueError(f"unknown llm model_id: {model_id}")
                 inp = payload["input"]
-                output = llm.generate(
+                output = bundle.generate(
                     messages=inp["messages"],
                     max_tokens=int(inp.get("max_tokens") or 16),
                     temperature=float(inp.get("temperature") or 0.0),
