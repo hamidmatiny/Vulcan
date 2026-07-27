@@ -15,7 +15,8 @@
 #   9011 — training/ray-train optional status (profile: training)
 #   9012 — training/fsdp-ddp optional status (profile: training)
 #   9013 — training/deepspeed optional status (profile: training)
-#   9014–9098 — reserved
+#   9014 — MLflow tracking UI (profile: training; ADR-013)
+#   9015–9098 — reserved
 #   9099 — contract OpenAPI stub (optional profile: stub)
 
 name: vulcan
@@ -325,7 +326,7 @@ services:
       retries: 5
 
   # Optional training status HTTP (ADR-010). Jobs themselves are CLI; these stubs
-  # reserve host ports 9011–9013 for local dashboards / scrape smoke.
+  # reserve host ports 9011–9013 for local dashboards / scrape smoke. MLflow :9014.
   training-ray-train-status:
     profiles: ["training"]
     image: python:3.12-slim-bookworm
@@ -418,3 +419,27 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Self-hosted MLflow tracking (ADR-013). Sqlite + artifacts under .mlflow/ (gitignored).
+  # Local Dockerfile avoids authenticated ghcr.io/mlflow pulls (same spirit as moto offline).
+  mlflow:
+    profiles: ["training"]
+    build:
+      context: .
+      dockerfile: training/common/Dockerfile.mlflow
+    volumes:
+      - ./.mlflow:/mlflow
+    ports:
+      - "${VULCAN_MLFLOW_PORT:-9014}:9014"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9014/health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s

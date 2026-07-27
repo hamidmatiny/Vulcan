@@ -31,6 +31,7 @@ from vulcan_training_contract.validate import (  # noqa: E402
     validate_lora_fine_tune_result,
     validate_lora_fine_tune_spec,
 )
+from training.common.tracking import flatten_params, get_tracker  # noqa: E402
 
 # Structural proof that the adapter is not a no-op (not a quality claim).
 MIN_LOGITS_DELTA_L1 = 1e-4
@@ -160,6 +161,13 @@ def run(spec: dict[str, Any]) -> dict[str, Any]:
         lr=float(hp["learning_rate"]),
     )
 
+    tracker = get_tracker()
+    tracker.start_run(
+        os.environ.get("VULCAN_TRACKER_RUN_NAME", "lora-finetune-cpu"),
+        tags={"backend": "fsdp-ddp", "job_type": "lora_finetune"},
+    )
+    tracker.log_params(flatten_params(spec))
+
     seq_len = int(spec["dataset"]["seq_len"])
     batch_size = int(hp["batch_size"])
     max_steps = int(hp["max_steps"])
@@ -178,6 +186,7 @@ def run(spec: dict[str, Any]) -> dict[str, Any]:
         optimizer.step()
         final_loss = float(loss.detach().cpu())
         loss_curve.append({"step": step, "loss": final_loss})
+        tracker.log_metrics({"loss": final_loss}, step=step)
 
     wall = time.perf_counter() - t0
     peft_model.save_pretrained(str(adapter_dir))
@@ -191,10 +200,12 @@ def run(spec: dict[str, Any]) -> dict[str, Any]:
     adapted.to(device)
     delta = mean_abs_logits_delta(base_model, adapted, tokenizer, device)
     if delta < MIN_LOGITS_DELTA_L1:
+        tracker.end_run()
         raise RuntimeError(
             f"logits_delta_l1={delta} < {MIN_LOGITS_DELTA_L1}: adapter appears to be a no-op"
         )
     if final_loss > MAX_FINAL_LOSS:
+        tracker.end_run()
         raise RuntimeError(f"final_loss too high: {final_loss}")
 
     result: dict[str, Any] = {
@@ -229,6 +240,16 @@ def run(spec: dict[str, Any]) -> dict[str, Any]:
     (out / "metrics.json").write_text(
         json.dumps(result["metrics"], indent=2) + "\n", encoding="utf-8"
     )
+    tracker.log_metrics(
+        {
+            "final_loss": float(final_loss),
+            "logits_delta_l1": float(delta),
+            "wall_clock_seconds": float(wall),
+        }
+    )
+    tracker.log_artifact(out / "metrics.json")
+    tracker.log_artifact(out / "result.json")
+    tracker.end_run()
     return result
 
 

@@ -1,0 +1,4 @@
+# Optional deps for experiment tracking (ADR-013). Install only when testing trackers.
+mlflow>=2.14,<3
+wandb>=0.17,<0.20
+pytest>=8.0

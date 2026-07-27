@@ -4,6 +4,12 @@ All notable changes to Vulcan are documented here.
 
 ## [Unreleased]
 
+### Phase 21 — Pluggable experiment tracking (MLflow + W&B offline)
+
+- `training/common/tracking.py`: `ExperimentTracker` interface; `MlflowTracker` + `WandbTracker` (offline-only); default `VULCAN_TRACKER_BACKEND=none` (ADR-013)
+- FSDP/DDP + LoRA report existing loss/throughput through the interface (no recomputation)
+- Compose MLflow on host port **9014**; CI asserts MLflow API metrics + W&B `offline-run-*` dir (never wandb.ai)
+
 ### Phase 20 — DVC data versioning (deterministic model exports)
 
 - `dvc.yaml` wraps existing `export_llm.py` / `export_vision.py`; local filesystem remote only in CI (ADR-012)

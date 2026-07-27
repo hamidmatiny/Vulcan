@@ -82,7 +82,8 @@ Prefer small PRs mapped to a single phase or component.
   - `9011` — `training/ray-train` optional status HTTP (compose profile: `training`)
   - `9012` — `training/fsdp-ddp` optional status HTTP (compose profile: `training`)
   - `9013` — `training/deepspeed` optional status HTTP (compose profile: `training`)
-  - `9014–9098` — future backends / obs
+  - `9014` — MLflow tracking UI (self-hosted; compose profile: `training`; ADR-013)
+  - `9015–9098` — future backends / obs
   - Phase 6–9 K8s/GPU infra + phase 10 SageMaker: **no** docker-compose host port (validate-only / moto in CI)
   - `9099` — optional contract-stub / docs static
 - Reference server, stubs, and compose `ports:` MUST use this range. Never default to `8080`/`8090`/etc.

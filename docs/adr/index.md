@@ -16,3 +16,4 @@ Short records of the biggest technology choices in Vulcan. Each ADR states the c
 | [010](010-unified-training-job-contract.md) | Unified training job contract | Accepted |
 | [011](011-lora-peft-adapter-serving-integration.md) | LoRA / PEFT adapter fine-tuning + transparent serving | Accepted |
 | [012](012-data-versioning-with-dvc.md) | Data versioning with DVC (deterministic exports only) | Accepted |
+| [013](013-pluggable-experiment-tracking.md) | Pluggable experiment tracking (MLflow + W&B offline) | Accepted |

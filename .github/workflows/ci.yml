@@ -51,6 +51,7 @@ jobs:
       deepspeed_gate: ${{ steps.filter.outputs.deepspeed_gate }}
       lora_peft_gate: ${{ steps.filter.outputs.lora_peft_gate }}
       dvc_gate: ${{ steps.filter.outputs.dvc_gate }}
+      tracking_gate: ${{ steps.filter.outputs.tracking_gate }}
       force_all: ${{ steps.filter.outputs.force_all }}
     steps:
       - uses: actions/checkout@v4
@@ -185,6 +186,16 @@ jobs:
               - 'models/MANIFEST.md'
               - 'docs/adr/012-data-versioning-with-dvc.md'
               - 'docs/runbooks/dvc-remote.md'
+            tracking_gate:
+              - 'training/common/tracking.py'
+              - 'training/common/verify_tracking.py'
+              - 'training/common/requirements-tracking.txt'
+              - 'training/common/tests/test_tracking.py'
+              - 'training/common/Dockerfile.mlflow'
+              - 'training/fsdp-ddp/train.py'
+              - 'training/fsdp-ddp/lora/train_lora.py'
+              - 'docs/adr/013-pluggable-experiment-tracking.md'
+              - 'docker-compose.yml'
 
   lint:
     name: Lint
@@ -220,12 +231,16 @@ jobs:
           test -f docs/adr/010-unified-training-job-contract.md
           test -f docs/adr/011-lora-peft-adapter-serving-integration.md
           test -f docs/adr/012-data-versioning-with-dvc.md
+          test -f docs/adr/013-pluggable-experiment-tracking.md
           test -f models/MANIFEST.md
           test -f models/pins.json
           test -f dvc.yaml
           test -f dvc.lock
           test -f models/scripts/verify_dvc_manifest.py
           test -f docs/runbooks/dvc-remote.md
+          test -f training/common/tracking.py
+          test -f training/common/verify_tracking.py
+          test -f training/common/Dockerfile.mlflow
           test -f contracts/training-job-contract/openapi.yaml
           test -f contracts/training-job-contract/schemas/lora-fine-tune-spec.schema.json
           test -f training/ray-train/train.py
@@ -250,6 +265,7 @@ jobs:
           grep -q 'VULCAN_RAY_TRAIN_PORT:-9011' docker-compose.yml
           grep -q 'VULCAN_FSDP_DDP_PORT:-9012' docker-compose.yml
           grep -q 'VULCAN_DEEPSPEED_PORT:-9013' docker-compose.yml
+          grep -q 'VULCAN_MLFLOW_PORT:-9014' docker-compose.yml
           grep -q '9002' .cursor/rules/vulcan-foundations.mdc
           grep -q '9003' .cursor/rules/vulcan-foundations.mdc
           grep -q '9004' .cursor/rules/vulcan-foundations.mdc
@@ -262,6 +278,7 @@ jobs:
           grep -q '9011' .cursor/rules/vulcan-foundations.mdc
           grep -q '9012' .cursor/rules/vulcan-foundations.mdc
           grep -q '9013' .cursor/rules/vulcan-foundations.mdc
+          grep -q '9014' .cursor/rules/vulcan-foundations.mdc
           grep -qE 'phase-N:|fix\(<component>\)' .cursor/rules/vulcan-foundations.mdc
           test -f serving/kserve/helm/Chart.yaml
           test -f docs/runbooks/kserve-local-kind.md
@@ -1269,6 +1286,76 @@ jobs:
           git diff --exit-code dvc.lock
           PYTHONPATH=models/scripts models/.venv-dvc/bin/python models/scripts/verify_dvc_manifest.py
           PYTHONPATH=models/scripts models/.venv/bin/python models/scripts/verify_manifest.py
+
+  tracking:
+    name: Experiment tracking · MLflow + W&B offline
+    needs: changes
+    if: needs.changes.outputs.tracking_gate == 'true' || needs.changes.outputs.force_all == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Start self-hosted MLflow (:9014)
+        run: |
+          mkdir -p .mlflow
+          docker compose --profile training build mlflow
+          docker compose --profile training up -d mlflow
+          for i in $(seq 1 90); do
+            if curl -fsS "http://127.0.0.1:${VULCAN_MLFLOW_PORT:-9014}/health" >/dev/null; then
+              echo "MLflow healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose --profile training logs mlflow || true
+          exit 1
+      - name: Install FSDP/DDP + tracking deps
+        run: |
+          python -m pip install -U pip
+          python -m venv training/fsdp-ddp/.venv
+          . training/fsdp-ddp/.venv/bin/activate
+          pip install -r training/fsdp-ddp/requirements.txt
+          pip install -r training/common/requirements-tracking.txt
+          pip install -e "contracts/training-job-contract[dev]"
+          pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: MLflow-backed FSDP/DDP run + API assert
+        env:
+          PYTHONHASHSEED: "0"
+          PYTHONPATH: ${{ github.workspace }}
+          VULCAN_TRACKER_BACKEND: mlflow
+          VULCAN_TRACKER_RUN_NAME: fsdp-ddp-cpu
+          MLFLOW_TRACKING_URI: http://127.0.0.1:9014
+        run: |
+          . training/fsdp-ddp/.venv/bin/activate
+          python training/fsdp-ddp/train.py --strategy ddp --output-dir training/results/fsdp-ddp-mlflow
+          python training/common/verify_tracking.py --backend mlflow --tracking-uri "$MLFLOW_TRACKING_URI" --run-name fsdp-ddp-cpu
+      - name: W&B offline FSDP/DDP run + offline-dir assert
+        env:
+          PYTHONHASHSEED: "0"
+          PYTHONPATH: ${{ github.workspace }}
+          VULCAN_TRACKER_BACKEND: wandb
+          VULCAN_TRACKER_RUN_NAME: fsdp-ddp-cpu-wandb
+          WANDB_MODE: offline
+          WANDB_DIR: ${{ github.workspace }}/wandb-runs
+          WANDB_API_KEY: ""
+        run: |
+          . training/fsdp-ddp/.venv/bin/activate
+          python training/fsdp-ddp/train.py --strategy ddp --output-dir training/results/fsdp-ddp-wandb
+          python training/common/verify_tracking.py --backend wandb --wandb-dir "$WANDB_DIR"
+      - name: Tracking unit tests
+        env:
+          PYTHONHASHSEED: "0"
+          PYTHONPATH: ${{ github.workspace }}
+          WANDB_MODE: offline
+        run: |
+          . training/fsdp-ddp/.venv/bin/activate
+          pytest -q training/common/tests/test_tracking.py
+      - name: Tear down MLflow
+        if: always()
+        run: docker compose --profile training stop mlflow || true
 
   adr-gate:
     name: ADR gate (contracts / gpu-infra / autoscaling / gateway / advanced-gpu / cost-token / training)

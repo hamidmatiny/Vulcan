@@ -30,6 +30,7 @@ from training.common.runtime import (  # noqa: E402
     verify_checkpoint_forward,
     write_result,
 )
+from training.common.tracking import flatten_params, get_tracker  # noqa: E402
 from vulcan_training_contract.validate import (  # noqa: E402
     validate_training_job_result,
     validate_training_job_spec,
@@ -67,9 +68,19 @@ def _worker(rank: int, world_size: int, spec: dict, checkpoint_path: Path, stop_
                 self.stop_requested = True
 
     stopper = _StopFile()
+    tracker = get_tracker() if rank == 0 else None
+    if tracker is not None:
+        tracker.start_run(
+            os.environ.get("VULCAN_TRACKER_RUN_NAME", "fsdp-ddp-cpu"),
+            tags={"backend": "fsdp-ddp", "strategy": str(spec["distributed"].get("strategy"))},
+        )
+        tracker.log_params(flatten_params(spec))
 
-    def _after_step(_state: TrainState) -> None:
+    def _after_step(st: TrainState) -> None:
         stopper.poll()
+        if rank == 0 and tracker is not None and st.loss_curve:
+            last = st.loss_curve[-1]
+            tracker.log_metrics({"loss": float(last["loss"])}, step=int(last["step"]))
 
     wall = run_local_steps(
         model,
@@ -102,19 +113,23 @@ def _worker(rank: int, world_size: int, spec: dict, checkpoint_path: Path, stop_
                 wall_clock_seconds=wall,
                 cpu_dev_mode=bool(spec["cpu_dev_mode"]),
             )
+            if tracker is not None:
+                tracker.end_run()
         dist.destroy_process_group()
         return
 
     if rank == 0:
         steps = max(state.step, 1)
         samples = steps * int(hp["batch_size"]) * world_size
+        samples_per_sec = samples / wall if wall > 0 else 0.0
+        steps_per_sec = steps / wall if wall > 0 else 0.0
         result = write_result(
             Path(spec["output_dir"]),
             backend="fsdp-ddp",
             checkpoint_path=checkpoint_path,
             state=state,
-            samples_per_sec=samples / wall if wall > 0 else 0.0,
-            steps_per_sec=steps / wall if wall > 0 else 0.0,
+            samples_per_sec=samples_per_sec,
+            steps_per_sec=steps_per_sec,
             wall_clock_seconds=wall,
             cpu_dev_mode=bool(spec["cpu_dev_mode"]),
         )
@@ -122,6 +137,19 @@ def _worker(rank: int, world_size: int, spec: dict, checkpoint_path: Path, stop_
         if state.completed and result["metrics"]["final_loss"] > MAX_FINAL_LOSS:
             raise RuntimeError(f"final_loss too high: {result['metrics']['final_loss']}")
         verify_checkpoint_forward(checkpoint_path, vocab_size=raw_model.vocab_size)
+        if tracker is not None:
+            tracker.log_metrics(
+                {
+                    "final_loss": float(result["metrics"]["final_loss"]),
+                    "samples_per_sec": float(samples_per_sec),
+                    "steps_per_sec": float(steps_per_sec),
+                    "wall_clock_seconds": float(wall),
+                }
+            )
+            out = Path(spec["output_dir"])
+            tracker.log_artifact(out / "metrics.json")
+            tracker.log_artifact(out / "result.json")
+            tracker.end_run()
 
     dist.destroy_process_group()
 

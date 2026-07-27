@@ -2,7 +2,7 @@
 .PHONY: up down logs test test-contracts test-serving-common test-benchmark \
 	test-checkpointing test-sagemaker test-bedrock test-gateway \
 	test-cost-exporter test-ray-train test-fsdp-ddp test-deepspeed test-lora-peft \
-	docs-serve docs-build up-observability lint \
+	test-tracking docs-serve docs-build up-observability lint \
 	reference-server benchmark-smoke benchmark-bentoml benchmark-ray-serve \
 	benchmark-triton benchmark-vllm benchmark-compare models-export \
 	models-verify dvc-repro triton-prepare wait-for-health validate-kserve \
@@ -39,6 +39,8 @@ TEMPO_PORT ?= 9010
 RAY_TRAIN_PORT ?= 9011
 FSDP_DDP_PORT ?= 9012
 DEEPSPEED_PORT ?= 9013
+MLFLOW_PORT ?= 9014
+TRACKING_VENV := training/common/.venv
 # Poll loop mirrors CI health-wait (96 × 5s ≈ 8 min).
 HEALTH_WAIT_RETRIES ?= 96
 HEALTH_WAIT_SLEEP_SECS ?= 5
@@ -133,13 +135,15 @@ lint: $(CONTRACTS_VENV)/bin/pytest $(SERVING_COMMON_VENV)/bin/pytest $(TRAINING_
 	cd $(TRAINING_CONTRACTS_DIR) && .venv/bin/ruff check src tests
 	@echo "==> lint: ruff (serving/common)"
 	cd $(SERVING_COMMON_DIR) && .venv/bin/ruff check src tests
-	@echo "==> lint: ADR presence (001, 002, 009, 010, 011, 012)"
+	@echo "==> lint: ADR presence (001, 002, 009, 010, 011, 012, 013)"
 	@test -f docs/adr/001-unified-model-serving-contract.md
 	@test -f docs/adr/002-gpu-cost-safety-policy.md
 	@test -f docs/adr/009-gpu-cost-safety-extends-to-training.md
 	@test -f docs/adr/010-unified-training-job-contract.md
 	@test -f docs/adr/011-lora-peft-adapter-serving-integration.md
 	@test -f docs/adr/012-data-versioning-with-dvc.md
+	@test -f docs/adr/013-pluggable-experiment-tracking.md
+	@test -f training/common/tracking.py
 	@test -f dvc.yaml
 	@test -f dvc.lock
 	@echo "==> lint: OK"
@@ -190,6 +194,13 @@ test-lora-peft: ## LoRA/PEFT fine-tune + base vs adapter logits delta (ADR-011)
 	PYTHONHASHSEED=0 PYTHONPATH=. VULCAN_LORA_ADAPTER_DIR=training/results/lora-demo/adapter \
 		training/fsdp-ddp/lora/.venv/bin/pytest -q \
 		training/fsdp-ddp/lora/tests serving/bentoml/tests/test_lora_logits_delta.py
+
+test-tracking: ## Experiment tracker unit tests (MLflow file store + W&B offline; ADR-013)
+	$(PYTHON) -m venv $(TRACKING_VENV)
+	$(TRACKING_VENV)/bin/pip install -U pip
+	$(TRACKING_VENV)/bin/pip install -r training/common/requirements-tracking.txt
+	PYTHONHASHSEED=0 PYTHONPATH=. WANDB_MODE=offline \
+		$(TRACKING_VENV)/bin/pytest -q training/common/tests/test_tracking.py
 
 reference-server: $(SERVING_COMMON_VENV)/bin/pytest ## Trivial reference server (:9001)
 	$(SERVING_COMMON_VENV)/bin/vulcan-reference-server --host $(REF_HOST) --port $(REF_PORT)
