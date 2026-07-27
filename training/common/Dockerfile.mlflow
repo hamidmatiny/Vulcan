@@ -2,14 +2,19 @@
 # depend on authenticated pulls from ghcr.io/mlflow/mlflow.
 FROM python:3.12-slim-bookworm
 
-RUN pip install --no-cache-dir "mlflow==2.22.5"
+RUN pip install --no-cache-dir "mlflow==2.22.5" \
+  && mkdir -p /mlflow/artifacts
 
 EXPOSE 9014
 
+# --serve-artifacts: clients outside the container upload via the tracking HTTP
+# API instead of writing the container-local /mlflow path (PermissionError in CI).
 CMD [ \
   "mlflow", "server", \
   "--host", "0.0.0.0", \
   "--port", "9014", \
   "--backend-store-uri", "sqlite:////mlflow/mlflow.db", \
-  "--default-artifact-root", "/mlflow/artifacts" \
+  "--default-artifact-root", "mlflow-artifacts:/", \
+  "--serve-artifacts", \
+  "--artifacts-destination", "/mlflow/artifacts" \
 ]

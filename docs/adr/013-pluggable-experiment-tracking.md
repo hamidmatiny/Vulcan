@@ -32,9 +32,10 @@ offline mode only in CI and documented local defaults.
 3. **MLflow is the self-hosted default UI.** Compose service on host port **9014**
    (`VULCAN_MLFLOW_PORT`), built from [`training/common/Dockerfile.mlflow`](../../training/common/Dockerfile.mlflow)
    (pip-pinned MLflow on `python:3.12-slim` — avoids authenticated `ghcr.io/mlflow`
-   pulls). Sqlite file store under gitignored `.mlflow/`. No SaaS account. Register
-   the port in foundations, `.env.example`, compose, and CI port-grep (same
-   four-place rule as 9011–9013).
+   pulls). Sqlite file store under gitignored `.mlflow/`; server runs with
+   `--serve-artifacts` so host clients can upload without sharing the container
+   path. No SaaS account. Register the port in foundations, `.env.example`,
+   compose, and CI port-grep (same four-place rule as 9011–9013).
 4. **W&B offline-only policy (cite SageMaker/Bedrock moto).** No `WANDB_API_KEY` in
    the repo or CI. CI and local defaults set `WANDB_MODE=offline`. Assertions
    inspect `./wandb/offline-run-*` (or `WANDB_DIR`), never a live dashboard fetch.
